@@ -1,12 +1,12 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { queryOptions, useSuspenseQuery } from "@tanstack/react-query";
-import { useServerFn } from "@tanstack/react-start";
+
 import { useMemo } from "react";
 import { ChevronLeft } from "lucide-react";
 import { getFleetData } from "@/lib/fleet.functions";
 import { BottomNav } from "@/components/BottomNav";
 
-function fleetQueryOptions(fetchFn: () => Promise<Awaited<ReturnType<typeof getFleetData>>>) {
+function fleetQueryOptions(fetchFn: typeof getFleetData) {
   return queryOptions({
     queryKey: ["fleet-data"],
     queryFn: () => fetchFn(),
@@ -36,8 +36,8 @@ export const Route = createFileRoute("/performance")({
 });
 
 function PerformancePage() {
-  const fetchFleet = useServerFn(getFleetData);
-  const { data } = useSuspenseQuery(fleetQueryOptions(fetchFleet));
+  
+  const { data } = useSuspenseQuery(fleetQueryOptions(getFleetData));
 
   const zoneStats = useMemo(() => {
     const map = new Map<string, { total: number; onTime: number }>();

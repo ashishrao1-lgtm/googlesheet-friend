@@ -1,12 +1,12 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { queryOptions, useSuspenseQuery } from "@tanstack/react-query";
-import { useServerFn } from "@tanstack/react-start";
+
 import { ChevronLeft, MapPin, Phone, Clock, Building2 } from "lucide-react";
 import { getFleetData } from "@/lib/fleet.functions";
 import { BottomNav } from "@/components/BottomNav";
 import { StatusPill, toneForStatus } from "@/components/StatusPill";
 
-function fleetQueryOptions(fetchFn: () => Promise<Awaited<ReturnType<typeof getFleetData>>>) {
+function fleetQueryOptions(fetchFn: typeof getFleetData) {
   return queryOptions({
     queryKey: ["fleet-data"],
     queryFn: () => fetchFn(),
@@ -37,8 +37,8 @@ export const Route = createFileRoute("/vehicle/$id")({
 
 function VehicleDetail() {
   const { id } = Route.useParams();
-  const fetchFleet = useServerFn(getFleetData);
-  const { data } = useSuspenseQuery(fleetQueryOptions(fetchFleet));
+  
+  const { data } = useSuspenseQuery(fleetQueryOptions(getFleetData));
 
   const fixedHistory = data.fixed.filter((r) => r.vehicle === id);
   const adhocHistory = data.adhoc.filter((r) => r.vehicle === id || r.ticketNo === id);

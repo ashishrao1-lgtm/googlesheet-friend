@@ -1,12 +1,12 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { queryOptions, useSuspenseQuery } from "@tanstack/react-query";
-import { useServerFn } from "@tanstack/react-start";
+
 import { ChevronLeft, MapPin } from "lucide-react";
 import { getFleetData } from "@/lib/fleet.functions";
 import { BottomNav } from "@/components/BottomNav";
 import { StatusPill, toneForStatus } from "@/components/StatusPill";
 
-function fleetQueryOptions(fetchFn: () => Promise<Awaited<ReturnType<typeof getFleetData>>>) {
+function fleetQueryOptions(fetchFn: typeof getFleetData) {
   return queryOptions({
     queryKey: ["fleet-data"],
     queryFn: () => fetchFn(),
@@ -33,8 +33,8 @@ export const Route = createFileRoute("/tracking")({
 });
 
 function TrackingPage() {
-  const fetchFleet = useServerFn(getFleetData);
-  const { data } = useSuspenseQuery(fleetQueryOptions(fetchFleet));
+  
+  const { data } = useSuspenseQuery(fleetQueryOptions(getFleetData));
   const active = data.adhoc
     .filter((r) => r.ticketStatus !== "cancelled" && r.vehicle)
     .slice(0, 40);
