@@ -32,12 +32,17 @@ export const Route = createFileRoute("/vehicle/$id")({
     ],
   }),
   loader: ({ context }) => context.queryClient.ensureQueryData(fleetQueryOptions(getFleetData)),
-  component: VehicleDetail,
+  component: VehicleDetailRoute,
 });
+
+function VehicleDetailRoute() {
+  const { AuthGate } = require("@/components/AuthGate");
+  return <AuthGate>{() => <VehicleDetail />}</AuthGate>;
+}
 
 function VehicleDetail() {
   const { id } = Route.useParams();
-  
+
   const { data } = useSuspenseQuery(fleetQueryOptions(getFleetData));
 
   const fixedHistory = data.fixed.filter((r) => r.vehicle === id);
