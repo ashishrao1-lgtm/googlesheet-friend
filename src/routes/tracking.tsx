@@ -1,15 +1,17 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { queryOptions, useSuspenseQuery } from "@tanstack/react-query";
-
 import { ChevronLeft, MapPin } from "lucide-react";
+
 import { getFleetData } from "@/lib/fleet.functions";
 import { BottomNav } from "@/components/BottomNav";
 import { StatusPill, toneForStatus } from "@/components/StatusPill";
+import { AuthGate } from "@/components/AuthGate";
+import type { FleetSession } from "@/lib/session";
 
-function fleetQueryOptions(fetchFn: typeof getFleetData) {
+function fleetQueryOptions() {
   return queryOptions({
     queryKey: ["fleet-data"],
-    queryFn: () => fetchFn(),
+    queryFn: () => getFleetData(),
     staleTime: 5 * 60_000,
   });
 }
@@ -18,25 +20,27 @@ export const Route = createFileRoute("/tracking")({
   head: () => ({
     meta: [
       { title: "Tracking · Fleet Executive" },
-      { name: "description", content: "Live tracking view of active fleet vehicles and trips." },
+      { name: "description", content: "Live tracking of your active ad-hoc trips." },
       { property: "og:title", content: "Tracking · Fleet Executive" },
-      {
-        property: "og:description",
-        content: "Live tracking view of active fleet vehicles and trips.",
-      },
+      { property: "og:description", content: "Live tracking of your active ad-hoc trips." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
-  loader: ({ context }) => context.queryClient.ensureQueryData(fleetQueryOptions(getFleetData)),
-  component: TrackingPage,
+  loader: ({ context }) => context.queryClient.ensureQueryData(fleetQueryOptions()),
+  component: TrackingRoute,
 });
 
-function TrackingPage() {
-  
-  const { data } = useSuspenseQuery(fleetQueryOptions(getFleetData));
+function TrackingRoute() {
+  return <AuthGate>{(s) => <TrackingPage session={s} />}</AuthGate>;
+}
+
+function TrackingPage({ session }: { session: FleetSession }) {
+  const { data } = useSuspenseQuery(fleetQueryOptions());
   const active = data.adhoc
-    .filter((r) => r.ticketStatus !== "cancelled" && r.vehicle)
+    .filter(
+      (r) => r.fleetDri === session.dri && r.ticketStatus !== "cancelled" && r.vehicle,
+    )
     .slice(0, 40);
 
   return (
@@ -48,7 +52,10 @@ function TrackingPage() {
         >
           <ChevronLeft className="h-4 w-4" />
         </Link>
-        <h1 className="text-base font-semibold">Live Tracking</h1>
+        <div className="min-w-0">
+          <h1 className="truncate text-base font-semibold">Live Tracking</h1>
+          <p className="truncate text-[11px] text-muted-foreground">{session.dri}</p>
+        </div>
       </div>
 
       <div className="px-4">
@@ -64,7 +71,7 @@ function TrackingPage() {
             <div>
               <MapPin className="mx-auto h-6 w-6 text-primary" />
               <p className="mt-1 text-xs font-medium text-muted-foreground">
-                {active.length} active trips
+                {active.length} active trips in your AOR
               </p>
             </div>
           </div>
@@ -93,6 +100,11 @@ function TrackingPage() {
             </div>
           </div>
         ))}
+        {active.length === 0 && (
+          <div className="rounded-2xl border border-dashed border-border bg-card p-8 text-center text-sm text-muted-foreground">
+            No active trips in your AOR right now.
+          </div>
+        )}
       </div>
 
       <BottomNav />

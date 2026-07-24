@@ -134,5 +134,5 @@ export const getFleetData = createServerFn({ method: "GET" }).handler(async () =
     ontimePlacement: r[28] ?? "",
   }));
 
-  return { fixed: fixedRows, adhoc: adhocRows };
+  return { fixed: fixedRows, adhoc: adhocRows, fetchedAt: new Date().toISOString() };
 });

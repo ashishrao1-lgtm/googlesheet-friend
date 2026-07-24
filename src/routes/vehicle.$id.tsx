@@ -5,6 +5,7 @@ import { ChevronLeft, MapPin, Phone, Clock, Building2 } from "lucide-react";
 import { getFleetData } from "@/lib/fleet.functions";
 import { BottomNav } from "@/components/BottomNav";
 import { StatusPill, toneForStatus } from "@/components/StatusPill";
+import { AuthGate } from "@/components/AuthGate";
 
 function fleetQueryOptions(fetchFn: typeof getFleetData) {
   return queryOptions({
@@ -32,12 +33,16 @@ export const Route = createFileRoute("/vehicle/$id")({
     ],
   }),
   loader: ({ context }) => context.queryClient.ensureQueryData(fleetQueryOptions(getFleetData)),
-  component: VehicleDetail,
+  component: VehicleDetailRoute,
 });
+
+function VehicleDetailRoute() {
+  return <AuthGate>{() => <VehicleDetail />}</AuthGate>;
+}
 
 function VehicleDetail() {
   const { id } = Route.useParams();
-  
+
   const { data } = useSuspenseQuery(fleetQueryOptions(getFleetData));
 
   const fixedHistory = data.fixed.filter((r) => r.vehicle === id);
