@@ -5,6 +5,7 @@ import { ChevronLeft, MapPin, Phone, Clock, Building2 } from "lucide-react";
 import { getFleetData } from "@/lib/fleet.functions";
 import { BottomNav } from "@/components/BottomNav";
 import { StatusPill, toneForStatus } from "@/components/StatusPill";
+import { AuthGate } from "@/components/AuthGate";
 
 function fleetQueryOptions(fetchFn: typeof getFleetData) {
   return queryOptions({
@@ -36,7 +37,6 @@ export const Route = createFileRoute("/vehicle/$id")({
 });
 
 function VehicleDetailRoute() {
-  const { AuthGate } = require("@/components/AuthGate");
   return <AuthGate>{() => <VehicleDetail />}</AuthGate>;
 }
 
