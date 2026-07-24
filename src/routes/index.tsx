@@ -7,7 +7,7 @@ import { getFleetData, type AdhocRow, type FixedRow } from "@/lib/fleet.function
 import { BottomNav } from "@/components/BottomNav";
 import { StatusPill, toneForStatus } from "@/components/StatusPill";
 
-function fleetQueryOptions(fetchFn: typeof getFleetData) {
+function fleetQueryOptions(fetchFn: () => Promise<Awaited<ReturnType<typeof getFleetData>>>) {
   return queryOptions({
     queryKey: ["fleet-data"],
     queryFn: () => fetchFn(),
