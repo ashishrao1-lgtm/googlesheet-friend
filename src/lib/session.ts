@@ -20,7 +20,7 @@ export function getSession(): FleetSession | null {
 export function setSession(dri: string): FleetSession {
   const prev = getSession();
   const s: FleetSession = {
-    dri,
+    dri: dri.trim(),
     loginAt: new Date().toISOString(),
     previousLoginAt: prev?.loginAt ?? null,
   };
@@ -31,6 +31,10 @@ export function setSession(dri: string): FleetSession {
 export function clearSession() {
   if (typeof window === "undefined") return;
   window.localStorage.removeItem(KEY);
+}
+
+export function driMatches(rowDri: string, sessionDri: string): boolean {
+  return (rowDri || "").trim().toLowerCase() === (sessionDri || "").trim().toLowerCase();
 }
 
 export function formatDateTime(iso: string | null | undefined): string {

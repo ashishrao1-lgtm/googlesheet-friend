@@ -1,12 +1,23 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { queryOptions, useSuspenseQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
-import { ChevronLeft } from "lucide-react";
+import { ChevronDown, ChevronLeft, ChevronUp } from "lucide-react";
 
-import { getFleetData } from "@/lib/fleet.functions";
+import { getFleetData, type AdhocRow, type FixedRow } from "@/lib/fleet.functions";
 import { BottomNav } from "@/components/BottomNav";
 import { AuthGate } from "@/components/AuthGate";
-import type { FleetSession } from "@/lib/session";
+import { driMatches, type FleetSession } from "@/lib/session";
+import { LineChart, type Point } from "@/components/LineChart";
+import { VendorSplitTable, type VendorRow } from "@/components/VendorSplitTable";
+import { FilterButton, FilterSheet } from "@/components/FilterSheet";
+import {
+  EMPTY_FILTERS,
+  applyAdhocFilters,
+  applyFixedFilters,
+  uniqueAdhocOptions,
+  uniqueFixedOptions,
+  type FilterState,
+} from "@/lib/filters";
 
 function fleetQueryOptions() {
   return queryOptions({
@@ -19,17 +30,17 @@ function fleetQueryOptions() {
 export const Route = createFileRoute("/performance")({
   head: () => ({
     meta: [
-      { title: "Performance · Fleet Executive" },
+      { title: "Performance · Delhivery Intracity Fleet" },
       {
         name: "description",
         content:
-          "Daily on-time performance charts for your assigned fixed vehicles and ad-hoc placements.",
+          "Day-level on-time trend, vendor split, axle-app placement % and reporting breach % for your AOR.",
       },
-      { property: "og:title", content: "Performance · Fleet Executive" },
+      { property: "og:title", content: "Performance · Delhivery Intracity Fleet" },
       {
         property: "og:description",
         content:
-          "Daily on-time performance charts for your assigned fixed vehicles and ad-hoc placements.",
+          "Day-level on-time trend, vendor split, axle-app placement % and reporting breach % for your AOR.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
@@ -43,176 +54,153 @@ function PerformanceRoute() {
   return <AuthGate>{(s) => <PerformancePage session={s} />}</AuthGate>;
 }
 
-const RANGE_OPTIONS = [
-  { label: "7d", days: 7 },
-  { label: "30d", days: 30 },
-  { label: "90d", days: 90 },
-] as const;
-
 function parseDate(s: string): Date | null {
   if (!s) return null;
   const iso = s.includes("T") ? s : s.replace(" ", "T");
   const d = new Date(iso);
   return Number.isNaN(d.getTime()) ? null : d;
 }
-
-function dayKey(d: Date): string {
+function dayKey(d: Date) {
   return d.toISOString().slice(0, 10);
-}
-
-function shortDay(key: string): string {
-  const d = new Date(key + "T00:00:00");
-  return d.toLocaleDateString(undefined, { day: "2-digit", month: "short" });
 }
 
 function PerformancePage({ session }: { session: FleetSession }) {
   const { data } = useSuspenseQuery(fleetQueryOptions());
-  const [days, setDays] = useState<number>(30);
+  const [filters, setFilters] = useState<FilterState>(EMPTY_FILTERS);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [scope, setScope] = useState<"fixed" | "adhoc">("fixed");
+  const [showVendorFixed, setShowVendorFixed] = useState(false);
+  const [showVendorAdhoc, setShowVendorAdhoc] = useState(false);
 
-  const cutoff = useMemo(() => {
-    const d = new Date();
-    d.setHours(0, 0, 0, 0);
-    d.setDate(d.getDate() - (days - 1));
-    return d;
-  }, [days]);
-
-  const myFixed = useMemo(
-    () =>
-      data.fixed.filter((r) => {
-        if (r.fleetDri !== session.dri) return false;
-        const d = parseDate(r.attendanceDate);
-        return !d || d >= cutoff;
-      }),
-    [data.fixed, session.dri, cutoff],
+  const mineFixed = useMemo(
+    () => data.fixed.filter((r) => driMatches(r.fleetDri, session.dri)),
+    [data.fixed, session.dri],
+  );
+  const mineAdhoc = useMemo(
+    () => data.adhoc.filter((r) => driMatches(r.fleetDri, session.dri)),
+    [data.adhoc, session.dri],
   );
 
-  const myAdhoc = useMemo(
-    () =>
-      data.adhoc.filter((r) => {
-        if (r.fleetDri !== session.dri) return false;
-        const d = parseDate(r.creationTime);
-        return !d || d >= cutoff;
-      }),
-    [data.adhoc, session.dri, cutoff],
-  );
+  const myFixed = useMemo(() => applyFixedFilters(mineFixed, filters), [mineFixed, filters]);
+  const myAdhoc = useMemo(() => applyAdhocFilters(mineAdhoc, filters), [mineAdhoc, filters]);
 
-  const dailyFixed = useMemo(() => {
-    const map = new Map<string, { total: number; onTime: number }>();
-    for (const r of myFixed) {
-      const d = parseDate(r.attendanceDate);
-      if (!d) continue;
-      const key = dayKey(d);
-      const cur = map.get(key) ?? { total: 0, onTime: 0 };
-      cur.total += 1;
-      if (r.status === "On-time") cur.onTime += 1;
-      map.set(key, cur);
-    }
-    return Array.from(map.entries())
-      .map(([key, v]) => ({
-        key,
-        pct: v.total === 0 ? 0 : Math.round((v.onTime / v.total) * 100),
-        total: v.total,
-        onTime: v.onTime,
-      }))
-      .sort((a, b) => (a.key < b.key ? -1 : 1));
-  }, [myFixed]);
+  const dailyFixed: Point[] = useMemo(() => buildDailyFixed(myFixed), [myFixed]);
+  const dailyAxle: Point[] = useMemo(() => buildDailyAxle(myAdhoc), [myAdhoc]);
+  const dailyBreach: Point[] = useMemo(() => buildDailyBreach(myAdhoc), [myAdhoc]);
 
-  const dailyAdhoc = useMemo(() => {
-    const map = new Map<string, { total: number; onTime: number }>();
-    for (const r of myAdhoc) {
-      const placement = (r.ontimePlacement || "").trim().toLowerCase();
-      if (!placement) continue;
-      const d = parseDate(r.reportingTime) ?? parseDate(r.creationTime);
-      if (!d) continue;
-      const key = dayKey(d);
-      const cur = map.get(key) ?? { total: 0, onTime: 0 };
-      cur.total += 1;
-      if (placement.includes("on-time") || placement.includes("ontime") || placement === "on time") {
-        cur.onTime += 1;
-      }
-      map.set(key, cur);
-    }
-    return Array.from(map.entries())
-      .map(([key, v]) => ({
-        key,
-        pct: v.total === 0 ? 0 : Math.round((v.onTime / v.total) * 100),
-        total: v.total,
-        onTime: v.onTime,
-      }))
-      .sort((a, b) => (a.key < b.key ? -1 : 1));
-  }, [myAdhoc]);
+  const fixedSummary = useMemo(() => summarizeFixed(myFixed), [myFixed]);
+  const adhocSummary = useMemo(() => summarizeAdhoc(myAdhoc), [myAdhoc]);
 
-  const fixedSummary = useMemo(() => {
-    const total = myFixed.length;
-    const onTime = myFixed.filter((r) => r.status === "On-time").length;
-    return { total, onTime, pct: total ? Math.round((onTime / total) * 100) : 0 };
-  }, [myFixed]);
+  const vendorFixed: VendorRow[] = useMemo(() => vendorSplitFixed(myFixed), [myFixed]);
+  const vendorAdhoc: VendorRow[] = useMemo(() => vendorSplitAdhoc(myAdhoc), [myAdhoc]);
 
-  const adhocSummary = useMemo(() => {
-    const withPlacement = myAdhoc.filter((r) => r.ontimePlacement);
-    const total = withPlacement.length;
-    const onTime = withPlacement.filter((r) =>
-      (r.ontimePlacement || "").toLowerCase().includes("on-time") ||
-      (r.ontimePlacement || "").toLowerCase().includes("ontime"),
-    ).length;
-    return { total, onTime, pct: total ? Math.round((onTime / total) * 100) : 0 };
-  }, [myAdhoc]);
+  const options =
+    scope === "fixed" ? uniqueFixedOptions(mineFixed) : uniqueAdhocOptions(mineAdhoc);
 
   return (
     <div className="mx-auto flex min-h-screen max-w-md flex-col bg-surface pb-24">
-      <div className="sticky top-0 z-40 flex items-center gap-3 bg-surface/95 px-4 pt-4 pb-3 backdrop-blur">
-        <Link
-          to="/"
-          className="flex h-9 w-9 items-center justify-center rounded-full bg-card shadow-sm"
-        >
-          <ChevronLeft className="h-4 w-4" />
-        </Link>
-        <div className="min-w-0 flex-1">
-          <h1 className="truncate text-base font-semibold">Performance</h1>
-          <p className="truncate text-[11px] text-muted-foreground">{session.dri}</p>
+      <div className="sticky top-0 z-40 space-y-2 bg-surface/95 px-4 pt-4 pb-2 backdrop-blur">
+        <div className="flex items-center gap-3">
+          <Link to="/" className="flex h-9 w-9 items-center justify-center rounded-full bg-card shadow-sm">
+            <ChevronLeft className="h-4 w-4" />
+          </Link>
+          <div className="min-w-0 flex-1">
+            <h1 className="truncate text-base font-semibold">Performance</h1>
+            <p className="truncate text-[11px] text-muted-foreground">{session.dri}</p>
+          </div>
+          <FilterButton filters={filters} onClick={() => setFiltersOpen(true)} />
         </div>
-        <div className="flex items-center gap-1 rounded-full bg-secondary p-1 text-[11px] font-semibold">
-          {RANGE_OPTIONS.map((o) => (
-            <button
-              key={o.days}
-              onClick={() => setDays(o.days)}
-              data-active={days === o.days}
-              className="rounded-full px-2.5 py-1 text-secondary-foreground data-[active=true]:bg-primary data-[active=true]:text-primary-foreground"
-            >
-              {o.label}
-            </button>
-          ))}
+        <div className="grid grid-cols-2 gap-1 rounded-full bg-secondary p-1 text-[12px] font-semibold">
+          <button
+            onClick={() => setScope("fixed")}
+            data-active={scope === "fixed"}
+            className="rounded-full py-2 text-secondary-foreground data-[active=true]:bg-primary data-[active=true]:text-primary-foreground"
+          >
+            Fixed
+          </button>
+          <button
+            onClick={() => setScope("adhoc")}
+            data-active={scope === "adhoc"}
+            className="rounded-full py-2 text-secondary-foreground data-[active=true]:bg-primary data-[active=true]:text-primary-foreground"
+          >
+            Adhoc
+          </button>
         </div>
       </div>
 
-      <section className="space-y-2 px-4">
-        <SummaryTile
-          title="Fixed on-time compliance"
-          subtitle="Vehicles reporting on schedule"
-          pct={fixedSummary.pct}
-          detail={`${fixedSummary.onTime} on-time / ${fixedSummary.total} attendance`}
-        />
-        <ChartCard
-          title="Daily on-time %"
-          empty="No fixed attendance in this window."
-          bars={dailyFixed}
-        />
-      </section>
+      {scope === "fixed" && (
+        <section className="mt-3 space-y-2 px-4">
+          <SummaryTile
+            title="Fixed on-time compliance"
+            pct={fixedSummary.pct}
+            detail={`${fixedSummary.onTime} on-time / ${fixedSummary.total} attendance`}
+          />
+          <ChartCard title="Daily on-time %" subtitle="status = On-time / total">
+            <LineChart points={dailyFixed} emptyLabel="No fixed attendance in this window." />
+          </ChartCard>
 
-      <section className="mt-4 space-y-2 px-4">
-        <SummaryTile
-          title="Ad-hoc placement compliance"
-          subtitle="Placements meeting reporting time"
-          pct={adhocSummary.pct}
-          detail={`${adhocSummary.onTime} on-time / ${adhocSummary.total} classified placements`}
-        />
-        <ChartCard
-          title="Daily placement on-time %"
-          empty="No ad-hoc placements with on-time data in this window."
-          bars={dailyAdhoc}
-        />
-      </section>
+          <DetailSplitToggle
+            open={showVendorFixed}
+            onToggle={() => setShowVendorFixed((v) => !v)}
+            label="Vendor-level on-time compliance"
+          />
+          {showVendorFixed && <VendorSplitTable rows={vendorFixed} title="Vendor" />}
+        </section>
+      )}
 
+      {scope === "adhoc" && (
+        <section className="mt-3 space-y-2 px-4">
+          <div className="grid grid-cols-2 gap-2">
+            <SummaryTile
+              title="Axle-app placement %"
+              pct={adhocSummary.axlePct}
+              detail={`${adhocSummary.axle} of ${adhocSummary.withOrigin}`}
+              small
+            />
+            <SummaryTile
+              title="Reporting breached %"
+              pct={adhocSummary.breachPct}
+              detail={`${adhocSummary.delayed} delayed / ${adhocSummary.totalTickets}`}
+              tone="danger"
+              small
+            />
+          </div>
+
+          <ChartCard title="Daily axle-app %" subtitle="count(bid_origin = axle-app) / count(bid_origin)">
+            <LineChart
+              points={dailyAxle}
+              color="var(--color-info)"
+              emptyLabel="No bid-origin data in this window."
+            />
+          </ChartCard>
+
+          <ChartCard
+            title="Daily reporting-breach %"
+            subtitle="ontime_placement = Delayed (distinct tickets) / distinct tickets"
+          >
+            <LineChart
+              points={dailyBreach}
+              color="var(--color-destructive)"
+              emptyLabel="No ontime_placement data in this window."
+            />
+          </ChartCard>
+
+          <DetailSplitToggle
+            open={showVendorAdhoc}
+            onToggle={() => setShowVendorAdhoc((v) => !v)}
+            label="Vendor-level placement compliance"
+          />
+          {showVendorAdhoc && <VendorSplitTable rows={vendorAdhoc} title="Vendor" />}
+        </section>
+      )}
+
+      <FilterSheet
+        open={filtersOpen}
+        onClose={() => setFiltersOpen(false)}
+        filters={filters}
+        onApply={setFilters}
+        options={options}
+      />
       <BottomNav />
     </div>
   );
@@ -220,137 +208,183 @@ function PerformancePage({ session }: { session: FleetSession }) {
 
 function SummaryTile({
   title,
-  subtitle,
   pct,
   detail,
+  small,
+  tone = "success",
 }: {
   title: string;
-  subtitle: string;
   pct: number;
   detail: string;
+  small?: boolean;
+  tone?: "success" | "danger";
 }) {
+  const color = tone === "success" ? "var(--color-success)" : "var(--color-destructive)";
   return (
-    <div className="rounded-2xl bg-card p-4 shadow-sm">
-      <div className="flex items-end justify-between">
-        <div>
-          <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-            {title}
-          </p>
-          <p className="text-xs text-muted-foreground">{subtitle}</p>
+    <div className="rounded-2xl bg-card p-3 shadow-sm">
+      <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+        {title}
+      </p>
+      <div className="mt-1 flex items-end justify-between">
+        <div className={small ? "text-2xl font-bold" : "text-3xl font-bold"} style={{ color }}>
+          {pct}%
         </div>
-        <div className="text-3xl font-bold text-[color:var(--color-success)]">{pct}%</div>
       </div>
-      <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-muted">
-        <div
-          className="h-full"
-          style={{ width: `${pct}%`, background: "var(--color-success)" }}
-        />
+      <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-muted">
+        <div className="h-full" style={{ width: `${pct}%`, background: color }} />
       </div>
-      <p className="mt-1.5 text-[11px] text-muted-foreground">{detail}</p>
+      <p className="mt-1 text-[10px] text-muted-foreground">{detail}</p>
     </div>
   );
 }
 
 function ChartCard({
   title,
-  empty,
-  bars,
+  subtitle,
+  children,
 }: {
   title: string;
-  empty: string;
-  bars: { key: string; pct: number; total: number; onTime: number }[];
+  subtitle?: string;
+  children: React.ReactNode;
 }) {
   return (
-    <div className="rounded-2xl bg-card p-4 shadow-sm">
-      <div className="mb-3 flex items-center justify-between">
+    <div className="rounded-2xl bg-card p-3 shadow-sm">
+      <div className="mb-2 flex items-baseline justify-between">
         <h3 className="text-sm font-semibold">{title}</h3>
-        <span className="text-[11px] text-muted-foreground">{bars.length} days</span>
+        {subtitle && <span className="text-[10px] text-muted-foreground">{subtitle}</span>}
       </div>
-      {bars.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-border p-6 text-center text-xs text-muted-foreground">
-          {empty}
-        </div>
-      ) : (
-        <BarChart bars={bars} />
-      )}
+      {children}
     </div>
   );
 }
 
-function BarChart({
-  bars,
+function DetailSplitToggle({
+  open,
+  onToggle,
+  label,
 }: {
-  bars: { key: string; pct: number; total: number; onTime: number }[];
+  open: boolean;
+  onToggle: () => void;
+  label: string;
 }) {
-  const max = 100;
-  const height = 140;
-  const gap = 4;
-  const barW = 14;
-  const width = bars.length * (barW + gap);
-  const [active, setActive] = useState<number | null>(null);
-
   return (
-    <div>
-      <div className="overflow-x-auto">
-        <svg
-          width={Math.max(width, 320)}
-          height={height + 24}
-          role="img"
-          aria-label="Daily on-time percentage"
-        >
-          {[25, 50, 75].map((y) => (
-            <line
-              key={y}
-              x1={0}
-              x2={Math.max(width, 320)}
-              y1={height - (y / max) * height}
-              y2={height - (y / max) * height}
-              stroke="var(--color-border)"
-              strokeDasharray="2 3"
-            />
-          ))}
-          {bars.map((b, i) => {
-            const h = (b.pct / max) * height;
-            const x = i * (barW + gap);
-            const y = height - h;
-            const fill =
-              b.pct >= 85
-                ? "var(--color-success)"
-                : b.pct >= 65
-                  ? "oklch(0.72 0.16 75)"
-                  : "var(--color-destructive)";
-            return (
-              <g key={b.key} onMouseEnter={() => setActive(i)} onMouseLeave={() => setActive(null)}>
-                <rect
-                  x={x}
-                  y={y}
-                  width={barW}
-                  height={Math.max(h, 2)}
-                  rx={3}
-                  fill={fill}
-                  opacity={active === null || active === i ? 1 : 0.55}
-                />
-                {i % Math.max(1, Math.ceil(bars.length / 6)) === 0 && (
-                  <text
-                    x={x + barW / 2}
-                    y={height + 14}
-                    textAnchor="middle"
-                    fontSize="9"
-                    fill="var(--color-muted-foreground)"
-                  >
-                    {shortDay(b.key)}
-                  </text>
-                )}
-              </g>
-            );
-          })}
-        </svg>
-      </div>
-      <div className="mt-2 text-[11px] text-muted-foreground">
-        {active !== null
-          ? `${shortDay(bars[active].key)} · ${bars[active].pct}% (${bars[active].onTime}/${bars[active].total})`
-          : `Latest ${shortDay(bars[bars.length - 1].key)} · ${bars[bars.length - 1].pct}%`}
-      </div>
-    </div>
+    <button
+      onClick={onToggle}
+      className="mt-1 flex w-full items-center justify-between rounded-xl bg-card px-3 py-2 text-sm font-semibold text-[color:var(--color-destructive)] shadow-sm"
+    >
+      <span>{open ? "Hide detailed split" : "Show detailed split"} · {label}</span>
+      {open ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+    </button>
   );
+}
+
+// ============ calc helpers ============
+
+function buildDailyFixed(rows: FixedRow[]): Point[] {
+  const m = new Map<string, { total: number; onTime: number }>();
+  for (const r of rows) {
+    const d = parseDate(r.attendanceDate);
+    if (!d) continue;
+    const k = dayKey(d);
+    const c = m.get(k) ?? { total: 0, onTime: 0 };
+    c.total += 1;
+    if (r.status === "On-time") c.onTime += 1;
+    m.set(k, c);
+  }
+  return [...m.entries()]
+    .sort((a, b) => (a[0] < b[0] ? -1 : 1))
+    .map(([key, v]) => ({ key, value: v.total ? Math.round((v.onTime / v.total) * 100) : 0 }));
+}
+
+function buildDailyAxle(rows: AdhocRow[]): Point[] {
+  const m = new Map<string, { total: number; axle: number }>();
+  for (const r of rows) {
+    const origin = (r.bidOrigin || "").trim().toLowerCase();
+    if (!origin) continue;
+    const d = parseDate(r.creationTime);
+    if (!d) continue;
+    const k = dayKey(d);
+    const c = m.get(k) ?? { total: 0, axle: 0 };
+    c.total += 1;
+    if (origin.includes("axle")) c.axle += 1;
+    m.set(k, c);
+  }
+  return [...m.entries()]
+    .sort((a, b) => (a[0] < b[0] ? -1 : 1))
+    .map(([key, v]) => ({ key, value: v.total ? Math.round((v.axle / v.total) * 100) : 0 }));
+}
+
+function buildDailyBreach(rows: AdhocRow[]): Point[] {
+  const m = new Map<string, { tickets: Set<string>; delayed: Set<string> }>();
+  for (const r of rows) {
+    const p = (r.ontimePlacement || "").trim().toLowerCase();
+    if (!p) continue;
+    const d = parseDate(r.reportingTime) ?? parseDate(r.creationTime);
+    if (!d) continue;
+    const k = dayKey(d);
+    const c = m.get(k) ?? { tickets: new Set(), delayed: new Set() };
+    c.tickets.add(r.ticketNo);
+    if (p.includes("delay")) c.delayed.add(r.ticketNo);
+    m.set(k, c);
+  }
+  return [...m.entries()]
+    .sort((a, b) => (a[0] < b[0] ? -1 : 1))
+    .map(([key, v]) => ({
+      key,
+      value: v.tickets.size ? Math.round((v.delayed.size / v.tickets.size) * 100) : 0,
+    }));
+}
+
+function summarizeFixed(rows: FixedRow[]) {
+  const total = rows.length;
+  const onTime = rows.filter((r) => r.status === "On-time").length;
+  return { total, onTime, pct: total ? Math.round((onTime / total) * 100) : 0 };
+}
+
+function summarizeAdhoc(rows: AdhocRow[]) {
+  const withOrigin = rows.filter((r) => r.bidOrigin).length;
+  const axle = rows.filter((r) => (r.bidOrigin || "").toLowerCase().includes("axle")).length;
+  const tickets = new Set(rows.filter((r) => r.ontimePlacement).map((r) => r.ticketNo));
+  const delayed = new Set(
+    rows
+      .filter((r) => (r.ontimePlacement || "").toLowerCase().includes("delay"))
+      .map((r) => r.ticketNo),
+  );
+  return {
+    withOrigin,
+    axle,
+    axlePct: withOrigin ? Math.round((axle / withOrigin) * 100) : 0,
+    totalTickets: tickets.size,
+    delayed: delayed.size,
+    breachPct: tickets.size ? Math.round((delayed.size / tickets.size) * 100) : 0,
+  };
+}
+
+function vendorSplitFixed(rows: FixedRow[]): VendorRow[] {
+  const m = new Map<string, VendorRow>();
+  for (const r of rows) {
+    const v = r.vendor || "—";
+    const cur = m.get(v) ?? { vendor: v, total: 0, onTime: 0, delayed: 0, absent: 0 };
+    cur.total += 1;
+    if (r.status === "On-time") cur.onTime += 1;
+    else if (r.status === "Delay") cur.delayed += 1;
+    else cur.absent = (cur.absent ?? 0) + 1;
+    m.set(v, cur);
+  }
+  return [...m.values()];
+}
+
+function vendorSplitAdhoc(rows: AdhocRow[]): VendorRow[] {
+  const m = new Map<string, VendorRow>();
+  for (const r of rows) {
+    const p = (r.ontimePlacement || "").toLowerCase();
+    if (!p) continue;
+    const v = r.vendor || "—";
+    const cur = m.get(v) ?? { vendor: v, total: 0, onTime: 0, delayed: 0 };
+    cur.total += 1;
+    if (p.includes("on-time") || p.includes("ontime") || p === "on time") cur.onTime += 1;
+    else if (p.includes("delay")) cur.delayed += 1;
+    m.set(v, cur);
+  }
+  return [...m.values()];
 }
