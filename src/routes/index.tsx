@@ -64,15 +64,13 @@ const OPEN_ADHOC_STATUSES = new Set(["requested", "open", "pending"]);
 
 function isFixedMissing(r: FixedRow): boolean {
   const s = (r.attendanceStatus || "").toLowerCase();
-  const st = (r.status || "").toLowerCase();
-  if (!s || s.includes("not marked") || s.includes("missing") || s.includes("pending")) return true;
-  if (st.includes("delay") || st.includes("miss") || st.includes("absent")) return true;
-  return false;
+  // Vehicle still pending to mark in → attendance_status = "Attendance Missing" (or blank)
+  return !s || s.includes("missing") || s.includes("not marked") || s.includes("pending");
 }
 
 function isAdhocOpen(r: AdhocRow): boolean {
-  const s = (r.ticketStatus || "").toLowerCase();
-  return OPEN_ADHOC_STATUSES.has(s) || s.includes("request");
+  const s = (r.ticketStatus || "").toLowerCase().trim();
+  return s === "requested" || s.includes("request") || s === "open" || s === "pending";
 }
 
 function DashboardPage({ session }: { session: FleetSession }) {
