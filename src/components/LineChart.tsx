@@ -79,6 +79,16 @@ export function LineChart({
           {coords.map((c, i) => (
             <g key={c.key} onMouseEnter={() => setHover(i)} onMouseLeave={() => setHover(null)}>
               <circle cx={c.x} cy={c.y} r={hover === i ? 5 : 3} fill={color} stroke="var(--color-card)" strokeWidth={1.5} />
+              <text
+                x={c.x}
+                y={c.y - 8}
+                fontSize="9"
+                fontWeight="600"
+                textAnchor="middle"
+                fill={color}
+              >
+                {c.value}%
+              </text>
               {i % Math.max(1, Math.ceil(coords.length / 6)) === 0 && (
                 <text
                   x={c.x}
