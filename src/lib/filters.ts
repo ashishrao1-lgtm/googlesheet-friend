@@ -28,16 +28,11 @@ export function activeCount(f: FilterState): number {
   return Object.values(f).filter((v) => v && v !== "").length;
 }
 
-function parseDate(s: string): Date | null {
-  if (!s) return null;
-  const iso = s.includes("T") ? s : s.replace(" ", "T");
-  const d = new Date(iso);
-  return Number.isNaN(d.getTime()) ? null : d;
-}
+import { parseDate } from "./dates";
 
 function inDateRange(dateStr: string, from: string, to: string): boolean {
   const d = parseDate(dateStr);
-  if (!d) return true;
+  if (!d) return !from && !to; // if unparseable and a filter is active, exclude
   if (from) {
     const df = new Date(from + "T00:00:00");
     if (d < df) return false;
