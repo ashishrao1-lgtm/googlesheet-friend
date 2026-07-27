@@ -86,12 +86,23 @@ async function fetchRanges(ranges: string[]) {
 }
 
 // Fetch the most recent rows from the tail of each sheet.
-// Active statuses (requested/truck_confirmed/truck_arrived, Attendance Missing)
-// only exist near the bottom of the sheet; fetching from row 2 gives stale history.
 const FIXED_TAIL = 8000;
 const ADHOC_TAIL = 6000;
 
-export const getFleetData = createServerFn({ method: "GET" }).handler(async () => {
+type FleetPayload = {
+  fixed: FixedRow[];
+  adhoc: AdhocRow[];
+  fetchedAt: string;
+};
+
+// Module-level cache to survive across requests on the same worker instance.
+// Sheets API has a 60 req/min per-project limit shared across all users, so we
+// must not hit it on every page load.
+const CACHE_TTL_MS = 60_000;
+let cache: { data: FleetPayload; expires: number } | null = null;
+let inflight: Promise<FleetPayload> | null = null;
+
+async function loadFleetData(): Promise<FleetPayload> {
   const meta = await getSheetsMeta();
   const fixedMeta = meta.find((m) => m.title === "Fixed Compliance");
   const adhocMeta = meta.find((m) => m.title === "Adhoc Compliance");
@@ -161,4 +172,29 @@ export const getFleetData = createServerFn({ method: "GET" }).handler(async () =
     }));
 
   return { fixed: fixedRows, adhoc: adhocRows, fetchedAt: new Date().toISOString() };
+}
+
+export const getFleetData = createServerFn({ method: "GET" }).handler(async () => {
+  const now = Date.now();
+  if (cache && cache.expires > now) return cache.data;
+  if (inflight) return inflight;
+
+  inflight = (async () => {
+    try {
+      const data = await loadFleetData();
+      cache = { data, expires: Date.now() + CACHE_TTL_MS };
+      return data;
+    } catch (err) {
+      // On rate-limit or transient errors, serve stale cache if we have it.
+      if (cache) {
+        console.warn("getFleetData failed, serving stale cache:", (err as Error).message);
+        return cache.data;
+      }
+      throw err;
+    } finally {
+      inflight = null;
+    }
+  })();
+
+  return inflight;
 });
