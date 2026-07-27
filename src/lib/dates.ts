@@ -17,15 +17,26 @@ export function parseDate(input: string | null | undefined): Date | null {
   const nat = new Date(iso);
   if (!Number.isNaN(nat.getTime()) && /\d{4}-\d{2}-\d{2}/.test(s)) return nat;
 
-  // DD/MM/YYYY or DD-MM-YYYY (with optional time)
+  // Slash/dash numeric date (with optional time).
+  // Google Sheets FORMATTED_VALUE uses the sheet's locale — for this workbook
+  // that's M/D/YYYY. Auto-detect when one component is >12 (unambiguous), else
+  // default to MM/DD/YYYY.
   const dmy = s.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})(?:[ T](\d{1,2}):(\d{2})(?::(\d{2}))?)?/);
   if (dmy) {
-    const [, dd, mm, yy, hh = "0", mi = "0", ss = "0"] = dmy;
+    const [, a, b, yy, hh = "0", mi = "0", ss = "0"] = dmy;
+    const n1 = parseInt(a, 10);
+    const n2 = parseInt(b, 10);
+    let day: number, month: number;
+    if (n1 > 12 && n2 <= 12) { day = n1; month = n2; }
+    else if (n2 > 12 && n1 <= 12) { month = n1; day = n2; }
+    else { month = n1; day = n2; } // default MM/DD (sheet locale)
     let year = parseInt(yy, 10);
     if (year < 100) year += 2000;
-    const d = new Date(year, parseInt(mm, 10) - 1, parseInt(dd, 10),
-      parseInt(hh, 10), parseInt(mi, 10), parseInt(ss, 10));
-    if (!Number.isNaN(d.getTime())) return d;
+    if (month >= 1 && month <= 12 && day >= 1 && day <= 31) {
+      const d = new Date(year, month - 1, day,
+        parseInt(hh, 10), parseInt(mi, 10), parseInt(ss, 10));
+      if (!Number.isNaN(d.getTime())) return d;
+    }
   }
 
   // DD-MMM-YYYY or DD MMM YYYY
