@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import { listDris, verifyLogin } from "@/lib/auth.functions";
 import { getSession, setSession } from "@/lib/session";
+import loginHero from "@/assets/login-hero.jpg";
 
 export const Route = createFileRoute("/login")({
   head: () => ({
