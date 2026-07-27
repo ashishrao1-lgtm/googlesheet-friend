@@ -32,7 +32,7 @@ import { parseDate } from "./dates";
 
 function inDateRange(dateStr: string, from: string, to: string): boolean {
   const d = parseDate(dateStr);
-  if (!d) return !from && !to; // if unparseable and a filter is active, exclude
+  if (!d) return !from && !to ? true : false;
   if (from) {
     const df = new Date(from + "T00:00:00");
     if (d < df) return false;
