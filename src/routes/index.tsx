@@ -235,7 +235,11 @@ function DashboardPage({ session }: { session: FleetSession }) {
             <SectionHeading
               icon={<AlertTriangle className="h-4 w-4" />}
               title="Fixed contracts pending attendance"
-              subtitle="Vehicles yet to be marked in at the facility"
+              subtitle={
+                today
+                  ? `Vehicles yet to mark in today · ${today.toLocaleDateString(undefined, { day: "2-digit", month: "short" })}`
+                  : "Vehicles yet to be marked in at the facility"
+              }
             />
             {fixedAlerts.slice(0, 80).map((r, i) => (
               <FixedAlertCard
