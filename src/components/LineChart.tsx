@@ -36,12 +36,22 @@ export function LineChart({
   }));
 
   const path = coords.map((c, i) => `${i === 0 ? "M" : "L"} ${c.x} ${c.y}`).join(" ");
+  const areaPath = coords.length
+    ? `${path} L ${coords[coords.length - 1].x} ${padY + innerH} L ${coords[0].x} ${padY + innerH} Z`
+    : "";
   const todayIdx = coords.length - 1;
+  const gradId = `lc-grad-${Math.abs(points.length * 7 + points[0].value)}`;
 
   return (
     <div>
       <div className="overflow-x-auto">
         <svg width={width} height={height} role="img" aria-label="Trend chart">
+          <defs>
+            <linearGradient id={gradId} x1="0" x2="0" y1="0" y2="1">
+              <stop offset="0%" stopColor={color} stopOpacity="0.28" />
+              <stop offset="100%" stopColor={color} stopOpacity="0" />
+            </linearGradient>
+          </defs>
           {[0, 25, 50, 75, 100].map((y) => {
             const yy = padY + innerH - (y / 100) * innerH;
             return (
@@ -64,10 +74,11 @@ export function LineChart({
               opacity={0.5}
             />
           )}
-          <path d={path} fill="none" stroke={color} strokeWidth={2} />
+          {areaPath && <path d={areaPath} fill={`url(#${gradId})`} stroke="none" />}
+          <path d={path} fill="none" stroke={color} strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" />
           {coords.map((c, i) => (
             <g key={c.key} onMouseEnter={() => setHover(i)} onMouseLeave={() => setHover(null)}>
-              <circle cx={c.x} cy={c.y} r={hover === i ? 5 : 3} fill={color} />
+              <circle cx={c.x} cy={c.y} r={hover === i ? 5 : 3} fill={color} stroke="var(--color-card)" strokeWidth={1.5} />
               {i % Math.max(1, Math.ceil(coords.length / 6)) === 0 && (
                 <text
                   x={c.x}

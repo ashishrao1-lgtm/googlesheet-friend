@@ -54,15 +54,7 @@ function PerformanceRoute() {
   return <AuthGate>{(s) => <PerformancePage session={s} />}</AuthGate>;
 }
 
-function parseDate(s: string): Date | null {
-  if (!s) return null;
-  const iso = s.includes("T") ? s : s.replace(" ", "T");
-  const d = new Date(iso);
-  return Number.isNaN(d.getTime()) ? null : d;
-}
-function dayKey(d: Date) {
-  return d.toISOString().slice(0, 10);
-}
+import { parseDate, dayKey } from "@/lib/dates";
 
 function PerformancePage({ session }: { session: FleetSession }) {
   const { data } = useSuspenseQuery(fleetQueryOptions());

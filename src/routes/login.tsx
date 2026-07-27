@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import { listDris, verifyLogin } from "@/lib/auth.functions";
 import { getSession, setSession } from "@/lib/session";
+import loginHero from "@/assets/login-hero.jpg";
 
 export const Route = createFileRoute("/login")({
   head: () => ({
@@ -74,11 +75,20 @@ function LoginPage() {
 
   return (
     <div
-      className="flex min-h-screen flex-col items-center justify-center px-6"
+      className="flex min-h-screen flex-col items-center justify-center px-6 py-8"
       style={{ background: "oklch(0.18 0.03 260)" }}
     >
       <div className="w-full max-w-md">
-        <div className="mb-8 text-center">
+        <div className="mb-6 overflow-hidden rounded-2xl shadow-2xl ring-1 ring-white/10">
+          <img
+            src={loginHero}
+            alt="Delhivery fleet of Volvo trucks at a logistics hub"
+            width={1280}
+            height={800}
+            className="h-40 w-full object-cover"
+          />
+        </div>
+        <div className="mb-6 text-center">
           <h1 className="text-3xl font-extrabold tracking-tight text-white">
             Delhivery Intracity{" "}
             <span style={{ color: "oklch(0.62 0.24 25)" }}>Fleet</span>

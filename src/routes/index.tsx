@@ -60,6 +60,8 @@ function DashboardRoute() {
   return <AuthGate>{(session) => <DashboardPage session={session} />}</AuthGate>;
 }
 
+import { parseDate, sameDay } from "@/lib/dates";
+
 const OPEN_ADHOC_STATUSES = new Set(["requested", "open", "pending"]);
 
 function isFixedMissing(r: FixedRow): boolean {
@@ -71,6 +73,16 @@ function isFixedMissing(r: FixedRow): boolean {
 function isAdhocOpen(r: AdhocRow): boolean {
   const s = (r.ticketStatus || "").toLowerCase().trim();
   return s === "requested" || s.includes("request") || s === "open" || s === "pending";
+}
+
+// Derive "current date" from the latest reportingTime present in the fixed dataset.
+function currentDataDate(fixed: FixedRow[]): Date | null {
+  let latest: Date | null = null;
+  for (const r of fixed) {
+    const d = parseDate(r.reportingTime);
+    if (d && (!latest || d > latest)) latest = d;
+  }
+  return latest;
 }
 
 function DashboardPage({ session }: { session: FleetSession }) {
@@ -89,6 +101,8 @@ function DashboardPage({ session }: { session: FleetSession }) {
     [data, session.dri],
   );
 
+  const today = useMemo(() => currentDataDate(mine.fixed), [mine.fixed]);
+
   const filteredFixed = useMemo(() => applyFixedFilters(mine.fixed, filters), [mine.fixed, filters]);
   const filteredAdhoc = useMemo(() => applyAdhocFilters(mine.adhoc, filters), [mine.adhoc, filters]);
 
@@ -105,13 +119,21 @@ function DashboardPage({ session }: { session: FleetSession }) {
     [filteredAdhoc, resolved],
   );
 
-  const fixedAlerts = useMemo(
-    () =>
-      filteredFixed
-        .filter(isFixedMissing)
-        .filter((r) => !resolved.has(fixedAlertId(r.contractNumber, r.attendanceDate))),
-    [filteredFixed, resolved],
-  );
+  // Show only rows whose reportingTime falls on the "current data date" —
+  // i.e. vehicles that are yet to report today.
+  const fixedAlerts = useMemo(() => {
+    const dateActive = !!(filters.dateFrom || filters.dateTo);
+    return filteredFixed
+      .filter(isFixedMissing)
+      .filter((r) => {
+        if (dateActive) return true; // user chose an explicit range
+        if (!today) return true;
+        const d = parseDate(r.reportingTime);
+        return !!d && sameDay(d, today);
+      })
+      .filter((r) => !resolved.has(fixedAlertId(r.contractNumber, r.attendanceDate)));
+  }, [filteredFixed, resolved, today, filters.dateFrom, filters.dateTo]);
+
 
   const resolvedList = useMemo(() => {
     void resolvedTick;
@@ -213,7 +235,11 @@ function DashboardPage({ session }: { session: FleetSession }) {
             <SectionHeading
               icon={<AlertTriangle className="h-4 w-4" />}
               title="Fixed contracts pending attendance"
-              subtitle="Vehicles yet to be marked in at the facility"
+              subtitle={
+                today
+                  ? `Vehicles yet to mark in today · ${today.toLocaleDateString(undefined, { day: "2-digit", month: "short" })}`
+                  : "Vehicles yet to be marked in at the facility"
+              }
             />
             {fixedAlerts.slice(0, 80).map((r, i) => (
               <FixedAlertCard
