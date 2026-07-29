@@ -233,8 +233,13 @@ function DashboardPage({ session }: { session: FleetSession }) {
             <SectionHeading
               icon={<AlertTriangle className="h-4 w-4" />}
               title="Adhoc tickets pending action"
-              subtitle="Requested tickets — awaiting confirmation & placement"
+              subtitle={
+                todayAdhoc
+                  ? `Requested tickets today · ${todayAdhoc.toLocaleDateString(undefined, { day: "2-digit", month: "short" })}`
+                  : "Requested tickets — awaiting confirmation & placement"
+              }
             />
+
             {adhocAlerts.slice(0, 80).map((r) => (
               <AdhocAlertCard key={r.ticketNo} row={r} onResolve={() => resolveAdhoc(r)} />
             ))}
