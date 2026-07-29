@@ -272,6 +272,15 @@ function DetailSplitToggle({
 
 // ============ calc helpers ============
 
+// Loose matchers — sheet values vary in casing/spacing ("On-time", "on time", "ONTIME").
+function isOnTime(s: string | undefined): boolean {
+  const v = (s || "").toLowerCase().replace(/[\s_-]/g, "");
+  return v === "ontime";
+}
+function isDelayed(s: string | undefined): boolean {
+  return (s || "").toLowerCase().includes("delay");
+}
+
 function buildDailyFixed(rows: FixedRow[]): Point[] {
   const m = new Map<string, { total: number; onTime: number }>();
   for (const r of rows) {
@@ -280,7 +289,7 @@ function buildDailyFixed(rows: FixedRow[]): Point[] {
     const k = dayKey(d);
     const c = m.get(k) ?? { total: 0, onTime: 0 };
     c.total += 1;
-    if (r.status === "On-time") c.onTime += 1;
+    if (isOnTime(r.status)) c.onTime += 1;
     m.set(k, c);
   }
   return [...m.entries()]
@@ -329,7 +338,7 @@ function buildDailyBreach(rows: AdhocRow[]): Point[] {
 
 function summarizeFixed(rows: FixedRow[]) {
   const total = rows.length;
-  const onTime = rows.filter((r) => r.status === "On-time").length;
+  const onTime = rows.filter((r) => isOnTime(r.status)).length;
   return { total, onTime, pct: total ? Math.round((onTime / total) * 100) : 0 };
 }
 
@@ -338,9 +347,7 @@ function summarizeAdhoc(rows: AdhocRow[]) {
   const axle = rows.filter((r) => (r.bidOrigin || "").toLowerCase().includes("axle")).length;
   const tickets = new Set(rows.filter((r) => r.ontimePlacement).map((r) => r.ticketNo));
   const delayed = new Set(
-    rows
-      .filter((r) => (r.ontimePlacement || "").toLowerCase().includes("delay"))
-      .map((r) => r.ticketNo),
+    rows.filter((r) => isDelayed(r.ontimePlacement)).map((r) => r.ticketNo),
   );
   return {
     withOrigin,
@@ -352,14 +359,17 @@ function summarizeAdhoc(rows: AdhocRow[]) {
   };
 }
 
+// Include every vendor seen in the AOR — the compliance rate is based on the
+// subset of rows with a status/placement value, but the vendor list itself
+// mirrors the full vendor roster the DRI works with.
 function vendorSplitFixed(rows: FixedRow[]): VendorRow[] {
   const m = new Map<string, VendorRow>();
   for (const r of rows) {
-    const v = r.vendor || "—";
+    const v = (r.vendor || "").trim() || "—";
     const cur = m.get(v) ?? { vendor: v, total: 0, onTime: 0, delayed: 0, absent: 0 };
     cur.total += 1;
-    if (r.status === "On-time") cur.onTime += 1;
-    else if (r.status === "Delay") cur.delayed += 1;
+    if (isOnTime(r.status)) cur.onTime += 1;
+    else if (isDelayed(r.status)) cur.delayed += 1;
     else cur.absent = (cur.absent ?? 0) + 1;
     m.set(v, cur);
   }
@@ -369,13 +379,11 @@ function vendorSplitFixed(rows: FixedRow[]): VendorRow[] {
 function vendorSplitAdhoc(rows: AdhocRow[]): VendorRow[] {
   const m = new Map<string, VendorRow>();
   for (const r of rows) {
-    const p = (r.ontimePlacement || "").toLowerCase();
-    if (!p) continue;
-    const v = r.vendor || "—";
+    const v = (r.vendor || "").trim() || "—";
     const cur = m.get(v) ?? { vendor: v, total: 0, onTime: 0, delayed: 0 };
     cur.total += 1;
-    if (p.includes("on-time") || p.includes("ontime") || p === "on time") cur.onTime += 1;
-    else if (p.includes("delay")) cur.delayed += 1;
+    if (isOnTime(r.ontimePlacement)) cur.onTime += 1;
+    else if (isDelayed(r.ontimePlacement)) cur.delayed += 1;
     m.set(v, cur);
   }
   return [...m.values()];

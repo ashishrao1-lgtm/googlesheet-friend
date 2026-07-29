@@ -75,11 +75,11 @@ function isAdhocOpen(r: AdhocRow): boolean {
   return s === "requested" || s.includes("request") || s === "open" || s === "pending";
 }
 
-// Derive "current date" from the latest reportingTime present in the fixed dataset.
-function currentDataDate(fixed: FixedRow[]): Date | null {
+// Derive "current date" from the latest date present in the dataset.
+function latestDate(dates: (string | undefined)[]): Date | null {
   let latest: Date | null = null;
-  for (const r of fixed) {
-    const d = parseDate(r.reportingTime);
+  for (const s of dates) {
+    const d = parseDate(s || "");
     if (d && (!latest || d > latest)) latest = d;
   }
   return latest;
@@ -101,7 +101,11 @@ function DashboardPage({ session }: { session: FleetSession }) {
     [data, session.dri],
   );
 
-  const today = useMemo(() => currentDataDate(mine.fixed), [mine.fixed]);
+  const today = useMemo(() => latestDate(mine.fixed.map((r) => r.reportingTime)), [mine.fixed]);
+  const todayAdhoc = useMemo(
+    () => latestDate(mine.adhoc.map((r) => r.creationTime)),
+    [mine.adhoc],
+  );
 
   const filteredFixed = useMemo(() => applyFixedFilters(mine.fixed, filters), [mine.fixed, filters]);
   const filteredAdhoc = useMemo(() => applyAdhocFilters(mine.adhoc, filters), [mine.adhoc, filters]);
@@ -111,13 +115,19 @@ function DashboardPage({ session }: { session: FleetSession }) {
     return resolvedIds(session.dri);
   }, [session.dri, resolvedTick]);
 
-  const adhocAlerts = useMemo(
-    () =>
-      filteredAdhoc
-        .filter(isAdhocOpen)
-        .filter((r) => !resolved.has(adhocAlertId(r.ticketNo))),
-    [filteredAdhoc, resolved],
-  );
+  // Only latest-date open adhoc tickets (unless the user set an explicit range).
+  const adhocAlerts = useMemo(() => {
+    const dateActive = !!(filters.dateFrom || filters.dateTo);
+    return filteredAdhoc
+      .filter(isAdhocOpen)
+      .filter((r) => {
+        if (dateActive) return true;
+        if (!todayAdhoc) return true;
+        const d = parseDate(r.creationTime);
+        return !!d && sameDay(d, todayAdhoc);
+      })
+      .filter((r) => !resolved.has(adhocAlertId(r.ticketNo)));
+  }, [filteredAdhoc, resolved, todayAdhoc, filters.dateFrom, filters.dateTo]);
 
   // Show only rows whose reportingTime falls on the "current data date" —
   // i.e. vehicles that are yet to report today.
@@ -133,6 +143,7 @@ function DashboardPage({ session }: { session: FleetSession }) {
       })
       .filter((r) => !resolved.has(fixedAlertId(r.contractNumber, r.attendanceDate)));
   }, [filteredFixed, resolved, today, filters.dateFrom, filters.dateTo]);
+
 
 
   const resolvedList = useMemo(() => {
@@ -222,8 +233,13 @@ function DashboardPage({ session }: { session: FleetSession }) {
             <SectionHeading
               icon={<AlertTriangle className="h-4 w-4" />}
               title="Adhoc tickets pending action"
-              subtitle="Requested tickets — awaiting confirmation & placement"
+              subtitle={
+                todayAdhoc
+                  ? `Requested tickets today · ${todayAdhoc.toLocaleDateString(undefined, { day: "2-digit", month: "short" })}`
+                  : "Requested tickets — awaiting confirmation & placement"
+              }
             />
+
             {adhocAlerts.slice(0, 80).map((r) => (
               <AdhocAlertCard key={r.ticketNo} row={r} onResolve={() => resolveAdhoc(r)} />
             ))}
