@@ -63,7 +63,8 @@ function NavItem({
     <li className="flex justify-center">
       <Link
         to={to}
-        className="flex flex-col items-center gap-1 rounded-xl px-3 py-1.5 text-[11px] font-medium text-muted-foreground data-[active=true]:text-foreground"
+        className="flex flex-col items-center gap-1 rounded-xl px-3 py-1.5 text-[11px] font-medium tracking-tight text-muted-foreground transition-colors duration-200 hover:text-foreground active:scale-95 data-[active=true]:text-foreground"
+
         data-active={active}
       >
         <span
