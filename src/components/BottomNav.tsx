@@ -21,7 +21,7 @@ export function BottomNav() {
             className="group -mt-8 flex flex-col items-center"
           >
             <span
-              className="flex h-14 w-14 items-center justify-center rounded-full shadow-lg ring-4 ring-card transition-transform group-active:scale-95"
+              className="flex h-14 w-14 items-center justify-center rounded-full shadow-lg ring-4 ring-card transition-all duration-200 ease-out group-hover:shadow-xl group-active:scale-95"
               style={{
                 background:
                   "linear-gradient(135deg, var(--color-primary), color-mix(in oklch, var(--color-primary) 55%, var(--color-info, #3b82f6)))",
@@ -31,11 +31,12 @@ export function BottomNav() {
               <Home className="h-6 w-6" strokeWidth={2.4} />
             </span>
             <span
-              className="mt-1 text-[11px] font-semibold"
+              className="mt-1.5 text-[11px] font-semibold tracking-tight transition-colors"
               style={{ color: homeActive ? "var(--color-primary)" : "var(--color-muted-foreground)" }}
             >
               Home
             </span>
+
           </Link>
         </li>
 
