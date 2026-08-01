@@ -6,8 +6,9 @@ export function BottomNav() {
   const { pathname } = useLocation();
   const homeActive = pathname === "/";
   return (
-    <nav className="fixed bottom-0 inset-x-0 z-50 border-t border-border bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80">
-      <ul className="relative mx-auto grid max-w-md grid-cols-5 items-end px-2 py-2">
+    <nav className="fixed bottom-0 inset-x-0 z-50 border-t border-border bg-card/95 backdrop-blur-md supports-[backdrop-filter]:bg-card/80">
+      <ul className="relative mx-auto grid max-w-md grid-cols-5 items-end px-2 pt-2 pb-2.5">
+
         <NavItem to="/tracking" label="Tracking" icon={MapPin} active={pathname === "/tracking"} />
         <NavItem to="/performance" label="Performance" icon={BarChart3} active={pathname === "/performance"} />
 
