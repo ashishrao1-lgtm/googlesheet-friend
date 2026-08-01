@@ -189,24 +189,24 @@ function DashboardPage({ session }: { session: FleetSession }) {
   }
 
   return (
-    <div className="mx-auto flex min-h-screen max-w-md flex-col bg-surface pb-24">
-      <div className="sticky top-0 z-40 space-y-2 bg-surface/95 px-4 pt-4 pb-2 backdrop-blur">
-        <div className="flex items-center justify-between gap-2">
+    <div className="mx-auto flex min-h-screen max-w-md flex-col bg-surface pb-28">
+      <div className="sticky top-0 z-40 space-y-3 border-b border-border/60 bg-surface/90 px-4 pt-5 pb-3 backdrop-blur-md">
+        <div className="flex items-center justify-between gap-3">
           <div className="min-w-0">
-            <div className="flex items-center gap-2 text-sm font-semibold">
-              <span className="h-2 w-2 rounded-full bg-[color:var(--color-success)]" />
+            <div className="flex min-w-0 items-center gap-2 text-sm font-semibold tracking-tight">
+              <span className="h-2 w-2 shrink-0 rounded-full bg-[color:var(--color-success)] shadow-[0_0_0_3px_color-mix(in_oklch,var(--color-success)_20%,transparent)]" />
               <span className="truncate">Logged in as: {session.dri}</span>
             </div>
-            <p className="mt-0.5 truncate text-[11px] text-muted-foreground">
+            <p className="mt-1 truncate text-[11px] leading-relaxed text-muted-foreground">
               Last login {formatDateTime(session.previousLoginAt ?? session.loginAt)} · Data updated{" "}
               {formatDateTime(data.fetchedAt)}
             </p>
           </div>
-          <div className="flex items-center gap-1.5">
+          <div className="flex shrink-0 items-center gap-2">
             <FilterButton filters={filters} onClick={() => setFiltersOpen(true)} />
             <button
               onClick={signOut}
-              className="flex h-9 w-9 items-center justify-center rounded-full bg-card text-muted-foreground shadow-sm"
+              className="flex h-9 w-9 items-center justify-center rounded-full bg-card text-muted-foreground shadow-sm transition-colors hover:text-foreground active:scale-95"
               aria-label="Sign out"
             >
               <LogOut className="h-4 w-4" />
@@ -227,7 +227,8 @@ function DashboardPage({ session }: { session: FleetSession }) {
         </div>
       </div>
 
-      <div className="mt-3 flex-1 space-y-2 px-4">
+      <div className="mt-4 flex-1 space-y-2.5 px-4">
+
         {tab === "adhoc" && (
           <>
             <SectionHeading
