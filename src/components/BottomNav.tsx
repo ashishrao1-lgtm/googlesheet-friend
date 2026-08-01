@@ -68,7 +68,7 @@ function NavItem({
         data-active={active}
       >
         <span
-          className="flex h-9 w-9 items-center justify-center rounded-full transition-colors"
+          className="flex h-9 w-9 items-center justify-center rounded-full transition-all duration-200 ease-out"
           style={{
             background: active
               ? "color-mix(in oklch, var(--color-primary) 15%, transparent)"
