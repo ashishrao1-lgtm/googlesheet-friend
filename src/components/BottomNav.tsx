@@ -6,8 +6,9 @@ export function BottomNav() {
   const { pathname } = useLocation();
   const homeActive = pathname === "/";
   return (
-    <nav className="fixed bottom-0 inset-x-0 z-50 border-t border-border bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80">
-      <ul className="relative mx-auto grid max-w-md grid-cols-5 items-end px-2 py-2">
+    <nav className="fixed bottom-0 inset-x-0 z-50 border-t border-border bg-card/95 backdrop-blur-md supports-[backdrop-filter]:bg-card/80">
+      <ul className="relative mx-auto grid max-w-md grid-cols-5 items-end px-2 pt-2 pb-2.5">
+
         <NavItem to="/tracking" label="Tracking" icon={MapPin} active={pathname === "/tracking"} />
         <NavItem to="/performance" label="Performance" icon={BarChart3} active={pathname === "/performance"} />
 
@@ -20,7 +21,7 @@ export function BottomNav() {
             className="group -mt-8 flex flex-col items-center"
           >
             <span
-              className="flex h-14 w-14 items-center justify-center rounded-full shadow-lg ring-4 ring-card transition-transform group-active:scale-95"
+              className="flex h-14 w-14 items-center justify-center rounded-full shadow-lg ring-4 ring-card transition-all duration-200 ease-out group-hover:shadow-xl group-active:scale-95"
               style={{
                 background:
                   "linear-gradient(135deg, var(--color-primary), color-mix(in oklch, var(--color-primary) 55%, var(--color-info, #3b82f6)))",
@@ -30,11 +31,12 @@ export function BottomNav() {
               <Home className="h-6 w-6" strokeWidth={2.4} />
             </span>
             <span
-              className="mt-1 text-[11px] font-semibold"
+              className="mt-1.5 text-[11px] font-semibold tracking-tight transition-colors"
               style={{ color: homeActive ? "var(--color-primary)" : "var(--color-muted-foreground)" }}
             >
               Home
             </span>
+
           </Link>
         </li>
 
@@ -61,11 +63,12 @@ function NavItem({
     <li className="flex justify-center">
       <Link
         to={to}
-        className="flex flex-col items-center gap-1 rounded-xl px-3 py-1.5 text-[11px] font-medium text-muted-foreground data-[active=true]:text-foreground"
+        className="flex flex-col items-center gap-1 rounded-xl px-3 py-1.5 text-[11px] font-medium tracking-tight text-muted-foreground transition-colors duration-200 hover:text-foreground active:scale-95 data-[active=true]:text-foreground"
+
         data-active={active}
       >
         <span
-          className="flex h-9 w-9 items-center justify-center rounded-full transition-colors"
+          className="flex h-9 w-9 items-center justify-center rounded-full transition-all duration-200 ease-out"
           style={{
             background: active
               ? "color-mix(in oklch, var(--color-primary) 15%, transparent)"
