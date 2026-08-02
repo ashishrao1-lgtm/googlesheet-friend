@@ -1,5 +1,6 @@
 import { Link, useLocation } from "@tanstack/react-router";
-import { Home, MapPin, BarChart3, User } from "lucide-react";
+import { Home, MapPin, BarChart3, User, Sparkles } from "lucide-react";
+
 
 // Home is intentionally centered as a raised FAB — it's the primary action.
 export function BottomNav() {
@@ -40,8 +41,8 @@ export function BottomNav() {
           </Link>
         </li>
 
+        <NavItem to="/ask" label="Ask AI" icon={Sparkles} active={pathname === "/ask"} />
         <NavItem to="/profile" label="Profile" icon={User} active={pathname === "/profile"} />
-        <li aria-hidden />
       </ul>
       <div className="h-[env(safe-area-inset-bottom)]" />
     </nav>
@@ -54,7 +55,7 @@ function NavItem({
   icon: Icon,
   active,
 }: {
-  to: "/tracking" | "/performance" | "/profile";
+  to: "/tracking" | "/performance" | "/profile" | "/ask";
   label: string;
   icon: typeof Home;
   active: boolean;
