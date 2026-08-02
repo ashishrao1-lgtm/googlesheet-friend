@@ -1,5 +1,6 @@
 import { Link, useLocation } from "@tanstack/react-router";
-import { Home, MapPin, BarChart3, User } from "lucide-react";
+import { Home, MapPin, BarChart3, User, Sparkles } from "lucide-react";
+
 
 // Home is intentionally centered as a raised FAB — it's the primary action.
 export function BottomNav() {
