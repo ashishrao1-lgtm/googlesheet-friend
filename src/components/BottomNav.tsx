@@ -41,8 +41,8 @@ export function BottomNav() {
           </Link>
         </li>
 
+        <NavItem to="/ask" label="Ask AI" icon={Sparkles} active={pathname === "/ask"} />
         <NavItem to="/profile" label="Profile" icon={User} active={pathname === "/profile"} />
-        <li aria-hidden />
       </ul>
       <div className="h-[env(safe-area-inset-bottom)]" />
     </nav>
@@ -55,7 +55,7 @@ function NavItem({
   icon: Icon,
   active,
 }: {
-  to: "/tracking" | "/performance" | "/profile";
+  to: "/tracking" | "/performance" | "/profile" | "/ask";
   label: string;
   icon: typeof Home;
   active: boolean;
