@@ -3,6 +3,8 @@ import { ChevronLeft, LogOut, User as UserIcon } from "lucide-react";
 
 import { BottomNav } from "@/components/BottomNav";
 import { AuthGate } from "@/components/AuthGate";
+import { FeedbackSheet } from "@/components/FeedbackSheet";
+
 import { clearSession, formatDateTime, type FleetSession } from "@/lib/session";
 
 export const Route = createFileRoute("/profile")({
