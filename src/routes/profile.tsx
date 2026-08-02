@@ -3,6 +3,8 @@ import { ChevronLeft, LogOut, User as UserIcon } from "lucide-react";
 
 import { BottomNav } from "@/components/BottomNav";
 import { AuthGate } from "@/components/AuthGate";
+import { FeedbackSheet } from "@/components/FeedbackSheet";
+
 import { clearSession, formatDateTime, type FleetSession } from "@/lib/session";
 
 export const Route = createFileRoute("/profile")({
@@ -72,7 +74,8 @@ function ProfilePage({ session }: { session: FleetSession }) {
         </div>
       </section>
 
-      <section className="mt-4 px-4">
+      <section className="mt-4 space-y-3 px-4">
+        <FeedbackSheet reporterName={session.dri} />
         <button
           onClick={signOut}
           className="flex w-full items-center justify-center gap-2 rounded-2xl bg-card px-4 py-3 text-sm font-semibold shadow-sm"
@@ -82,6 +85,7 @@ function ProfilePage({ session }: { session: FleetSession }) {
           Sign out
         </button>
       </section>
+
 
       <BottomNav />
     </div>
