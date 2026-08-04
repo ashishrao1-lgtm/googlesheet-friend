@@ -107,3 +107,69 @@ function InfoRow({ label, value }: { label: string; value: string }) {
     </div>
   );
 }
+
+function NotificationToggle() {
+  const [enabled, setEnabled] = useState(false);
+  const [permission, setPermission] = useState<NotificationPermission>("default");
+
+  useEffect(() => {
+    if (typeof Notification === "undefined") return;
+    setPermission(Notification.permission);
+    setEnabled(localStorage.getItem("fleet-alerts") === "on" && Notification.permission === "granted");
+  }, []);
+
+  async function toggle() {
+    if (typeof Notification === "undefined") return;
+    if (Notification.permission === "granted") {
+      const next = !enabled;
+      setEnabled(next);
+      localStorage.setItem("fleet-alerts", next ? "on" : "off");
+    } else {
+      const perm = await Notification.requestPermission();
+      setPermission(perm);
+      if (perm === "granted") {
+        setEnabled(true);
+        localStorage.setItem("fleet-alerts", "on");
+      } else {
+        setEnabled(false);
+        localStorage.setItem("fleet-alerts", "off");
+      }
+    }
+  }
+
+  if (typeof Notification === "undefined") {
+    return (
+      <div className="flex items-center justify-between px-4 py-3 text-sm text-muted-foreground">
+        <span>Push alerts not supported on this device.</span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex items-center justify-between px-4 py-3 text-sm">
+      <div className="flex items-center gap-2.5">
+        <Bell className="h-4 w-4 text-muted-foreground" />
+        <div>
+          <div className="font-medium">Enable alerts</div>
+          <div className="text-[11px] text-muted-foreground">
+            {permission === "granted" && enabled ? "On · browser notifications active"
+              : permission === "denied" ? "Blocked in browser settings"
+              : "Get notified about new tickets & attendance"}
+          </div>
+        </div>
+      </div>
+      <button
+        onClick={toggle}
+        role="switch"
+        aria-checked={enabled}
+        className="relative h-6 w-11 rounded-full transition-colors"
+        style={{ background: enabled ? "var(--color-primary)" : "var(--color-muted)" }}
+      >
+        <span
+          className="absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-all"
+          style={{ left: enabled ? "calc(100% - 1.375rem)" : "0.125rem" }}
+        />
+      </button>
+    </div>
+  );
+}
