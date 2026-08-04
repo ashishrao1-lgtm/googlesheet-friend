@@ -40,7 +40,7 @@ function VehicleDetailRoute() {
   return <AuthGate>{(session) => <VehicleDetail session={session} />}</AuthGate>;
 }
 
-function VehicleDetail() {
+function VehicleDetail({ session }: { session: FleetSession }) {
   const { id } = Route.useParams();
 
   const { data } = useSuspenseQuery(fleetQueryOptions(getFleetData));
