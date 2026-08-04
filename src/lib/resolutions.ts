@@ -1,3 +1,5 @@
+import { logAction } from "./actions.functions";
+
 export type ResolvedEntry = {
   id: string;
   kind: "adhoc" | "fixed";
@@ -34,12 +36,33 @@ export function markResolved(dri: string, entry: Omit<ResolvedEntry, "resolvedAt
   const list = getResolutions(dri).filter((e) => e.id !== entry.id);
   list.unshift({ ...entry, resolvedAt: new Date().toISOString() });
   saveResolutions(dri, list);
+  // Fire-and-forget audit log so follow-up history persists across devices.
+  void logAction({
+    data: {
+      dri,
+      ref: entry.ref,
+      kind: entry.kind,
+      action: "resolved",
+      label: entry.label,
+      center: entry.center,
+    },
+  }).catch(() => {});
   return list;
 }
 
 export function unresolve(dri: string, id: string) {
   const list = getResolutions(dri).filter((e) => e.id !== id);
   saveResolutions(dri, list);
+  void logAction({
+    data: {
+      dri,
+      ref: id.replace(/^(adhoc|fixed):/, ""),
+      kind: id.startsWith("adhoc:") ? "adhoc" : "fixed",
+      action: "undo",
+      label: id,
+      center: "",
+    },
+  }).catch(() => {});
   return list;
 }
 
