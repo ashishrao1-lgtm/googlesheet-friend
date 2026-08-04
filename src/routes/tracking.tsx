@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { queryOptions, useSuspenseQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
-import { ChevronLeft, Phone } from "lucide-react";
+import { ChevronLeft, MessageCircle, Phone } from "lucide-react";
 
 import { getFleetData, type AdhocRow, type FixedRow } from "@/lib/fleet.functions";
 import { BottomNav } from "@/components/BottomNav";
@@ -16,12 +16,16 @@ import {
   uniqueFixedOptions,
   type FilterState,
 } from "@/lib/filters";
+import { bySlaUrgency, slaColor, slaLabel, slaTone, timeToBreach } from "@/lib/sla";
+import { logAction } from "@/lib/actions.functions";
 
 function fleetQueryOptions() {
   return queryOptions({
     queryKey: ["fleet-data"],
     queryFn: () => getFleetData(),
     staleTime: 5 * 60_000,
+    refetchInterval: 60_000,
+    refetchOnWindowFocus: true,
   });
 }
 
@@ -61,6 +65,16 @@ function isFixedMissingAttendance(r: FixedRow): boolean {
   return !s || !s.includes("marked");
 }
 
+function cleanPhone(phone: string): string {
+  return (phone || "").replace(/[^0-9+]/g, "");
+}
+
+function waLink(phone: string, message: string): string {
+  const num = cleanPhone(phone).replace(/^\+/, "");
+  if (!num) return "";
+  return `https://wa.me/${num}?text=${encodeURIComponent(message)}`;
+}
+
 function TrackingPage({ session }: { session: FleetSession }) {
   const { data } = useSuspenseQuery(fleetQueryOptions());
   const [tab, setTab] = useState<"adhoc" | "fixed">("adhoc");
@@ -77,15 +91,25 @@ function TrackingPage({ session }: { session: FleetSession }) {
   );
 
   const adhocTrips = useMemo(
-    () => applyAdhocFilters(mineAdhoc, filters).filter(isTruckConfirmed),
+    () => bySlaUrgency(
+      applyAdhocFilters(mineAdhoc, filters).filter(isTruckConfirmed),
+      (r) => r.reportingTime,
+    ),
     [mineAdhoc, filters],
   );
   const fixedPending = useMemo(
-    () => applyFixedFilters(mineFixed, filters).filter(isFixedMissingAttendance),
+    () => bySlaUrgency(
+      applyFixedFilters(mineFixed, filters).filter(isFixedMissingAttendance),
+      (r) => r.reportingTime,
+    ),
     [mineFixed, filters],
   );
 
   const options = tab === "adhoc" ? uniqueAdhocOptions(mineAdhoc) : uniqueFixedOptions(mineFixed);
+
+  function track(action: Parameters<typeof logAction>[0]["data"]["action"], ref: string, kind: "adhoc" | "fixed", label: string, center: string) {
+    void logAction({ data: { dri: session.dri, ref, kind, action, label, center } }).catch(() => {});
+  }
 
   return (
     <div className="mx-auto flex min-h-screen max-w-md flex-col bg-surface pb-24">
@@ -121,14 +145,16 @@ function TrackingPage({ session }: { session: FleetSession }) {
 
       <div className="mt-3 flex-1 space-y-2 px-4">
         {tab === "adhoc" &&
-          adhocTrips.slice(0, 80).map((r) => <AdhocTripCard key={r.ticketNo} row={r} />)}
+          adhocTrips.slice(0, 80).map((r, i) => (
+            <AdhocTripCard key={r.ticketNo} row={r} index={i} onTrack={track} />
+          ))}
         {tab === "adhoc" && adhocTrips.length === 0 && (
           <Empty label="No trucks in ‘truck confirmed’ status right now." />
         )}
         {tab === "fixed" &&
           fixedPending
             .slice(0, 80)
-            .map((r, i) => <FixedPendingCard key={`${r.contractNumber}-${i}`} row={r} />)}
+            .map((r, i) => <FixedPendingCard key={`${r.contractNumber}-${i}`} row={r} index={i} onTrack={track} />)}
         {tab === "fixed" && fixedPending.length === 0 && (
           <Empty label="All fixed contracts have attendance marked." />
         )}
@@ -155,9 +181,39 @@ function Empty({ label }: { label: string }) {
   );
 }
 
-function AdhocTripCard({ row }: { row: AdhocRow }) {
+function SlaChip({ reportingTime }: { reportingTime: string | undefined }) {
+  const minutes = timeToBreach(reportingTime);
+  const tone = slaTone(minutes);
+  const color = slaColor(tone);
   return (
-    <div className="rounded-2xl bg-card p-3 shadow-sm">
+    <span
+      className="rounded-full px-2 py-0.5 text-[10px] font-semibold"
+      style={{ color, background: `color-mix(in oklch, ${color} 14%, transparent)` }}
+    >
+      {slaLabel(minutes)}
+    </span>
+  );
+}
+
+function AdhocTripCard({
+  row,
+  index,
+  onTrack,
+}: {
+  row: AdhocRow;
+  index: number;
+  onTrack: (action: "called_driver" | "called_vendor" | "whatsapp", ref: string, kind: "adhoc", label: string, center: string) => void;
+}) {
+  const minutes = timeToBreach(row.reportingTime);
+  const borderColor = slaColor(slaTone(minutes));
+  const label = `${row.vehicle || `#${row.ticketNo}`}`;
+  const center = `${row.center} · ${row.city}`;
+  const waMsg = `Hi, regarding adhoc ticket #${row.ticketNo} (${row.vehicle || "vehicle"}) at ${row.center}. Please confirm vehicle arrival. — Delhivery Fleet`;
+  return (
+    <div
+      className="animate-rise-stagger rounded-2xl border-l-4 bg-card p-3 shadow-sm"
+      style={{ borderLeftColor: borderColor, ["--rise-i" as string]: index }}
+    >
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <div className="flex items-center gap-2">
@@ -176,26 +232,44 @@ function AdhocTripCard({ row }: { row: AdhocRow }) {
         </div>
       </div>
 
-      <div className="mt-2 grid grid-cols-2 gap-1.5 text-[10px] text-muted-foreground">
+      <div className="mt-2 flex flex-wrap items-center gap-1.5 text-[10px] text-muted-foreground">
         <span className="rounded-full bg-secondary px-2 py-0.5 font-medium text-secondary-foreground">
           Rep {row.reportingTime?.split(" ")[1] ?? "—"}
         </span>
+        <SlaChip reportingTime={row.reportingTime} />
         <span className="truncate rounded-full bg-secondary px-2 py-0.5 font-medium text-secondary-foreground">
           {row.vendor || "No vendor"}
         </span>
       </div>
 
-      <div className="mt-2 grid grid-cols-2 gap-2">
-        <CallButton phone={row.driverPhone} label="Call Driver" />
-        <CallButton phone={row.spPhone} label="Call Vendor" />
+      <div className="mt-2.5 grid grid-cols-2 gap-2">
+        <CallButton phone={row.driverPhone} label="Call Driver" onClick={() => onTrack("called_driver", row.ticketNo, "adhoc", label, center)} />
+        <CallButton phone={row.spPhone} label="Call Vendor" onClick={() => onTrack("called_vendor", row.ticketNo, "adhoc", label, center)} />
       </div>
+      <WhatsAppButton phone={row.driverPhone || row.spPhone} message={waMsg} onClick={() => onTrack("whatsapp", row.ticketNo, "adhoc", label, center)} />
     </div>
   );
 }
 
-function FixedPendingCard({ row }: { row: FixedRow }) {
+function FixedPendingCard({
+  row,
+  index,
+  onTrack,
+}: {
+  row: FixedRow;
+  index: number;
+  onTrack: (action: "called_driver" | "called_vendor" | "whatsapp", ref: string, kind: "fixed", label: string, center: string) => void;
+}) {
+  const minutes = timeToBreach(row.reportingTime);
+  const borderColor = slaColor(slaTone(minutes));
+  const label = `${row.vehicle || row.contractNumber}`;
+  const center = `${row.center} · ${row.city}`;
+  const waMsg = `Hi, regarding fixed contract ${row.contractNumber} (${row.vehicle || "vehicle"}) at ${row.center}. Vehicle attendance is pending — please reach the facility. — Delhivery Fleet`;
   return (
-    <div className="rounded-2xl bg-card p-3 shadow-sm">
+    <div
+      className="animate-rise-stagger rounded-2xl border-l-4 bg-card p-3 shadow-sm"
+      style={{ borderLeftColor: borderColor, ["--rise-i" as string]: index }}
+    >
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <div className="flex items-center gap-2">
@@ -218,6 +292,7 @@ function FixedPendingCard({ row }: { row: FixedRow }) {
         <span className="rounded-full bg-secondary px-2 py-0.5 font-medium text-secondary-foreground">
           Rep {row.reportingTime?.split(" ")[1] ?? "—"}
         </span>
+        <SlaChip reportingTime={row.reportingTime} />
         <span className="truncate rounded-full bg-secondary px-2 py-0.5 font-medium text-secondary-foreground">
           {row.vendor}
         </span>
@@ -226,14 +301,23 @@ function FixedPendingCard({ row }: { row: FixedRow }) {
       <p className="mt-2 text-[10px] text-muted-foreground">
         Follow up with the vendor to reach the vehicle at {row.center}.
       </p>
+
+      <WhatsAppButton phone={row.driverPhone || row.spPhone} message={waMsg} onClick={() => onTrack("whatsapp", row.contractNumber, "fixed", label, center)} />
     </div>
   );
 }
 
-function CallButton({ phone, label }: { phone: string; label: string }) {
-  const clean = (phone || "").replace(/[^0-9+]/g, "");
-  const disabled = !clean;
-  if (disabled) {
+function CallButton({
+  phone,
+  label,
+  onClick,
+}: {
+  phone: string;
+  label: string;
+  onClick: () => void;
+}) {
+  const clean = cleanPhone(phone);
+  if (!clean) {
     return (
       <span className="flex items-center justify-center gap-1.5 rounded-lg bg-secondary py-2 text-[11px] font-semibold text-muted-foreground">
         <Phone className="h-3.5 w-3.5" /> {label}
@@ -243,9 +327,34 @@ function CallButton({ phone, label }: { phone: string; label: string }) {
   return (
     <a
       href={`tel:${clean}`}
-      className="flex items-center justify-center gap-1.5 rounded-lg bg-primary py-2 text-[11px] font-semibold text-primary-foreground"
+      onClick={onClick}
+      className="flex items-center justify-center gap-1.5 rounded-lg bg-primary py-2 text-[11px] font-semibold text-primary-foreground active:scale-95"
     >
       <Phone className="h-3.5 w-3.5" /> {label}
+    </a>
+  );
+}
+
+function WhatsAppButton({
+  phone,
+  message,
+  onClick,
+}: {
+  phone: string;
+  message: string;
+  onClick: () => void;
+}) {
+  const href = waLink(phone, message);
+  if (!href) return null;
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      onClick={onClick}
+      className="mt-2 flex items-center justify-center gap-1.5 rounded-lg border border-[color-mix(in_oklch,var(--color-success)_40%,transparent)] py-1.5 text-[11px] font-semibold text-[color:var(--color-success)] active:scale-95"
+    >
+      <MessageCircle className="h-3.5 w-3.5" /> WhatsApp follow-up
     </a>
   );
 }
