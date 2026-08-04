@@ -74,6 +74,12 @@ function ProfilePage({ session }: { session: FleetSession }) {
         </div>
       </section>
 
+      <section className="mt-4 px-4">
+        <div className="divide-y divide-border overflow-hidden rounded-2xl bg-card shadow-sm">
+          <NotificationToggle />
+        </div>
+      </section>
+
       <section className="mt-4 space-y-3 px-4">
         <FeedbackSheet reporterName={session.dri} />
         <button
