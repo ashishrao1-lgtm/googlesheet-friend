@@ -1,5 +1,5 @@
 import { Link, useLocation } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { queryOptions, useQuery } from "@tanstack/react-query";
 import { Home, MapPin, BarChart3, User, Sparkles } from "lucide-react";
 
 import { getFleetData } from "@/lib/fleet.functions";
@@ -13,8 +13,6 @@ function fleetQueryOptions() {
     staleTime: 5 * 60_000,
   });
 }
-
-import { queryOptions } from "@tanstack/react-query";
 
 // Home is intentionally centered as a raised FAB — it's the primary action.
 // Shows a count badge for total open alerts in the signed-in DRI's AOR.
