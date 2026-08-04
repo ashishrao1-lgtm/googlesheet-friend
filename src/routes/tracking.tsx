@@ -301,8 +301,6 @@ function FixedPendingCard({
       <p className="mt-2 text-[10px] text-muted-foreground">
         Follow up with the vendor to reach the vehicle at {row.center}.
       </p>
-
-      <WhatsAppButton phone={row.driverPhone || row.spPhone} message={waMsg} onClick={() => onTrack("whatsapp", row.contractNumber, "fixed", label, center)} />
     </div>
   );
 }
