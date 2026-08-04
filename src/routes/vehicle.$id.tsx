@@ -6,6 +6,9 @@ import { getFleetData } from "@/lib/fleet.functions";
 import { BottomNav } from "@/components/BottomNav";
 import { StatusPill, toneForStatus } from "@/components/StatusPill";
 import { AuthGate } from "@/components/AuthGate";
+import { type FleetSession } from "@/lib/session";
+import { listActions } from "@/lib/actions.functions";
+import { useServerFn } from "@tanstack/react-start";
 
 function fleetQueryOptions(fetchFn: typeof getFleetData) {
   return queryOptions({
@@ -37,10 +40,10 @@ export const Route = createFileRoute("/vehicle/$id")({
 });
 
 function VehicleDetailRoute() {
-  return <AuthGate>{() => <VehicleDetail />}</AuthGate>;
+  return <AuthGate>{(session) => <VehicleDetail session={session} />}</AuthGate>;
 }
 
-function VehicleDetail() {
+function VehicleDetail({ session }: { session: FleetSession }) {
   const { id } = Route.useParams();
 
   const { data } = useSuspenseQuery(fleetQueryOptions(getFleetData));
@@ -188,8 +191,60 @@ function VehicleDetail() {
         </section>
       )}
 
+      <FollowUpHistory dri={session.dri} ref={id} />
+
       <BottomNav />
     </div>
+  );
+}
+
+function FollowUpHistory({ dri, ref }: { dri: string; ref: string }) {
+  const fetchActions = useServerFn(listActions);
+  const { data: actionsData } = useSuspenseQuery({
+    queryKey: ["fleet-actions", dri, ref],
+    queryFn: () => fetchActions({ data: { dri, ref, limit: 50 } }),
+    staleTime: 30_000,
+  });
+  const actions = actionsData?.actions ?? [];
+  if (actions.length === 0) return null;
+
+  const icon: Record<string, string> = {
+    resolved: "✓",
+    called_driver: "📞",
+    called_vendor: "🏢",
+    whatsapp: "💬",
+    undo: "↩",
+  };
+
+  return (
+    <section className="mt-4 px-4">
+      <h2 className="mb-2 text-sm font-semibold">Follow-up history</h2>
+      <div className="space-y-2">
+        {actions.map((a) => (
+          <div key={a.id} className="flex items-start gap-2.5 rounded-xl bg-card p-3 shadow-sm">
+            <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-secondary text-sm">
+              {icon[a.action] ?? "•"}
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="text-xs font-semibold capitalize">
+                {a.action.replace(/_/g, " ")}
+              </p>
+              <p className="mt-0.5 truncate text-[11px] text-muted-foreground">
+                {a.label} · {a.center}
+              </p>
+            </div>
+            <span className="shrink-0 text-[10px] text-muted-foreground">
+              {new Date(a.created_at).toLocaleString(undefined, {
+                day: "2-digit",
+                month: "short",
+                hour: "2-digit",
+                minute: "2-digit",
+              })}
+            </span>
+          </div>
+        ))}
+      </div>
+    </section>
   );
 }
 

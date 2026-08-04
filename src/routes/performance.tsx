@@ -7,6 +7,7 @@ import { getFleetData, type AdhocRow, type FixedRow } from "@/lib/fleet.function
 import { BottomNav } from "@/components/BottomNav";
 import { AuthGate } from "@/components/AuthGate";
 import { driMatches, type FleetSession } from "@/lib/session";
+import { getResolutions } from "@/lib/resolutions";
 import { LineChart, type Point } from "@/components/LineChart";
 import { VendorSplitTable, type VendorRow } from "@/components/VendorSplitTable";
 import { FilterButton, FilterSheet } from "@/components/FilterSheet";
@@ -24,6 +25,8 @@ function fleetQueryOptions() {
     queryKey: ["fleet-data"],
     queryFn: () => getFleetData(),
     staleTime: 5 * 60_000,
+    refetchInterval: 60_000,
+    refetchOnWindowFocus: true,
   });
 }
 
@@ -56,6 +59,14 @@ function PerformanceRoute() {
 
 import { parseDate, dayKey } from "@/lib/dates";
 
+function isOnTime(s: string | undefined): boolean {
+  const v = (s || "").toLowerCase().replace(/[\s_-]/g, "");
+  return v === "ontime";
+}
+function isDelayed(s: string | undefined): boolean {
+  return (s || "").toLowerCase().includes("delay");
+}
+
 function PerformancePage({ session }: { session: FleetSession }) {
   const { data } = useSuspenseQuery(fleetQueryOptions());
   const [filters, setFilters] = useState<FilterState>(EMPTY_FILTERS);
@@ -85,6 +96,45 @@ function PerformancePage({ session }: { session: FleetSession }) {
 
   const vendorFixed: VendorRow[] = useMemo(() => vendorSplitFixed(myFixed), [myFixed]);
   const vendorAdhoc: VendorRow[] = useMemo(() => vendorSplitAdhoc(myAdhoc), [myAdhoc]);
+
+  // ---- Personal scorecard (you vs team average) ----
+  const scorecard = useMemo(() => {
+    const myOnTime = mineFixed.filter((r) => isOnTime(r.status)).length;
+    const myFixedOnTimePct = mineFixed.length ? Math.round((myOnTime / mineFixed.length) * 100) : 0;
+
+    const teamTotal = data.fixed.length;
+    const teamOnTime = data.fixed.filter((r) => isOnTime(r.status)).length;
+    const teamFixedOnTimePct = teamTotal ? Math.round((teamOnTime / teamTotal) * 100) : 0;
+
+    const myDelayedSet = new Set(
+      mineAdhoc.filter((r) => isDelayed(r.ontimePlacement)).map((r) => r.ticketNo),
+    );
+    const myTicketSet = new Set(mineAdhoc.filter((r) => r.ontimePlacement).map((r) => r.ticketNo));
+    const myBreachPct = myTicketSet.size
+      ? Math.round((myDelayedSet.size / myTicketSet.size) * 100)
+      : 0;
+
+    const teamDelayedSet = new Set(
+      data.adhoc.filter((r) => isDelayed(r.ontimePlacement)).map((r) => r.ticketNo),
+    );
+    const teamTicketSet = new Set(data.adhoc.filter((r) => r.ontimePlacement).map((r) => r.ticketNo));
+    const teamBreachPct = teamTicketSet.size
+      ? Math.round((teamDelayedSet.size / teamTicketSet.size) * 100)
+      : 0;
+
+    const resolvedCount = getResolutions(session.dri).length;
+    const totalAlerts = mineFixed.length + mineAdhoc.length;
+    const resolutionRate = totalAlerts ? Math.round((resolvedCount / totalAlerts) * 100) : 0;
+
+    return {
+      myFixedOnTimePct,
+      teamFixedOnTimePct,
+      myBreachPct,
+      teamBreachPct,
+      resolutionRate,
+      resolvedCount,
+    };
+  }, [mineFixed, mineAdhoc, data.fixed, data.adhoc, session.dri]);
 
   const options =
     scope === "fixed" ? uniqueFixedOptions(mineFixed) : uniqueAdhocOptions(mineAdhoc);
@@ -119,6 +169,37 @@ function PerformancePage({ session }: { session: FleetSession }) {
           </button>
         </div>
       </div>
+
+      {/* Personal scorecard */}
+      <section className="mt-3 px-4">
+        <div className="card-elevated rounded-2xl p-3.5">
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-semibold">Your AOR vs Team average</h3>
+            <span className="label-meta">{scorecard.resolvedCount} resolved</span>
+          </div>
+          <div className="mt-3 space-y-2.5">
+            <ScoreBar
+              label="Fixed on-time %"
+              you={scorecard.myFixedOnTimePct}
+              team={scorecard.teamFixedOnTimePct}
+              goodIsHigh
+            />
+            <ScoreBar
+              label="Reporting breach %"
+              you={scorecard.myBreachPct}
+              team={scorecard.teamBreachPct}
+              goodIsHigh={false}
+            />
+            <ScoreBar
+              label="Resolution rate %"
+              you={scorecard.resolutionRate}
+              team={0}
+              goodIsHigh
+              teamHidden
+            />
+          </div>
+        </div>
+      </section>
 
       {scope === "fixed" && (
         <section className="mt-3 space-y-2 px-4">
@@ -198,6 +279,53 @@ function PerformancePage({ session }: { session: FleetSession }) {
   );
 }
 
+function ScoreBar({
+  label,
+  you,
+  team,
+  goodIsHigh,
+  teamHidden,
+}: {
+  label: string;
+  you: number;
+  team: number;
+  goodIsHigh: boolean;
+  teamHidden?: boolean;
+}) {
+  const delta = you - team;
+  const youWin = teamHidden ? true : goodIsHigh ? delta >= 0 : delta <= 0;
+  const deltaColor = youWin ? "var(--color-success)" : "var(--color-destructive)";
+  const arrow = teamHidden ? "" : delta > 0 ? "▲" : delta < 0 ? "▼" : "—";
+  return (
+    <div>
+      <div className="flex items-center justify-between text-[11px]">
+        <span className="font-medium text-muted-foreground">{label}</span>
+        <span className="flex items-center gap-2">
+          <span className="font-bold text-foreground">{you}%</span>
+          {!teamHidden && (
+            <span className="text-muted-foreground">team {team}%</span>
+          )}
+          {!teamHidden && (
+            <span className="font-semibold" style={{ color: deltaColor }}>
+              {arrow} {Math.abs(delta)}%
+            </span>
+          )}
+        </span>
+      </div>
+      <div className="mt-1 flex h-2 gap-1">
+        <div className="relative flex-1 overflow-hidden rounded-full bg-muted">
+          <div className="h-full" style={{ width: `${you}%`, background: "var(--color-primary)" }} />
+        </div>
+        {!teamHidden && (
+          <div className="relative flex-1 overflow-hidden rounded-full bg-muted">
+            <div className="h-full" style={{ width: `${team}%`, background: "var(--color-muted-foreground)" }} />
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function SummaryTile({
   title,
   pct,
@@ -271,15 +399,6 @@ function DetailSplitToggle({
 }
 
 // ============ calc helpers ============
-
-// Loose matchers — sheet values vary in casing/spacing ("On-time", "on time", "ONTIME").
-function isOnTime(s: string | undefined): boolean {
-  const v = (s || "").toLowerCase().replace(/[\s_-]/g, "");
-  return v === "ontime";
-}
-function isDelayed(s: string | undefined): boolean {
-  return (s || "").toLowerCase().includes("delay");
-}
 
 function buildDailyFixed(rows: FixedRow[]): Point[] {
   const m = new Map<string, { total: number; onTime: number }>();
@@ -359,9 +478,6 @@ function summarizeAdhoc(rows: AdhocRow[]) {
   };
 }
 
-// Include every vendor seen in the AOR — the compliance rate is based on the
-// subset of rows with a status/placement value, but the vendor list itself
-// mirrors the full vendor roster the DRI works with.
 function vendorSplitFixed(rows: FixedRow[]): VendorRow[] {
   const m = new Map<string, VendorRow>();
   for (const r of rows) {

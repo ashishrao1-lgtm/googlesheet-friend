@@ -41,6 +41,42 @@ export type Database = {
         }
         Relationships: []
       }
+      fleet_actions: {
+        Row: {
+          action: string
+          center: string
+          created_at: string
+          dri: string
+          id: string
+          kind: string
+          label: string
+          note: string | null
+          ref: string
+        }
+        Insert: {
+          action: string
+          center?: string
+          created_at?: string
+          dri: string
+          id?: string
+          kind: string
+          label?: string
+          note?: string | null
+          ref: string
+        }
+        Update: {
+          action?: string
+          center?: string
+          created_at?: string
+          dri?: string
+          id?: string
+          kind?: string
+          label?: string
+          note?: string | null
+          ref?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
