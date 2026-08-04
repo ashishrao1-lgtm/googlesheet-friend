@@ -1,5 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { ChevronLeft, LogOut, User as UserIcon } from "lucide-react";
+import { Bell, ChevronLeft, LogOut, User as UserIcon } from "lucide-react";
+import { useEffect, useState } from "react";
 
 import { BottomNav } from "@/components/BottomNav";
 import { AuthGate } from "@/components/AuthGate";
