@@ -264,7 +264,6 @@ function FixedPendingCard({
   const borderColor = slaColor(slaTone(minutes));
   const label = `${row.vehicle || row.contractNumber}`;
   const center = `${row.center} · ${row.city}`;
-  const waMsg = `Hi, regarding fixed contract ${row.contractNumber} (${row.vehicle || "vehicle"}) at ${row.center}. Vehicle attendance is pending — please reach the facility. — Delhivery Fleet`;
   return (
     <div
       className="animate-rise-stagger rounded-2xl border-l-4 bg-card p-3 shadow-sm"
