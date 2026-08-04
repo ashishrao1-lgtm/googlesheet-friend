@@ -37,7 +37,7 @@ export const Route = createFileRoute("/vehicle/$id")({
 });
 
 function VehicleDetailRoute() {
-  return <AuthGate>{() => <VehicleDetail />}</AuthGate>;
+  return <AuthGate>{(session) => <VehicleDetail session={session} />}</AuthGate>;
 }
 
 function VehicleDetail() {
