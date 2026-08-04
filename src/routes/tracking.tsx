@@ -107,7 +107,7 @@ function TrackingPage({ session }: { session: FleetSession }) {
 
   const options = tab === "adhoc" ? uniqueAdhocOptions(mineAdhoc) : uniqueFixedOptions(mineFixed);
 
-  function track(action: Parameters<typeof logAction>[0]["data"]["action"], ref: string, kind: "adhoc" | "fixed", label: string, center: string) {
+  function track(action: "called_driver" | "called_vendor" | "whatsapp", ref: string, kind: "adhoc" | "fixed", label: string, center: string) {
     void logAction({ data: { dri: session.dri, ref, kind, action, label, center } }).catch(() => {});
   }
 
