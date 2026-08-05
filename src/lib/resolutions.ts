@@ -1,4 +1,5 @@
 import { logAction } from "./actions.functions";
+import { dayKey, parseDate } from "./dates";
 
 export type ResolvedEntry = {
   id: string;
@@ -73,6 +74,9 @@ export function resolvedIds(dri: string): Set<string> {
 export function adhocAlertId(ticketNo: string) {
   return `adhoc:${ticketNo}`;
 }
-export function fixedAlertId(contractNumber: string, attendanceDate: string) {
-  return `fixed:${contractNumber}|${attendanceDate}`;
+// Key on the reporting day, not attendanceDate (blank for pending rows), so
+// resolving one day never hides the same contract on another day.
+export function fixedAlertId(contractNumber: string, dateStr: string) {
+  const d = parseDate(dateStr);
+  return `fixed:${contractNumber}|${d ? dayKey(d) : (dateStr || "").trim()}`;
 }
