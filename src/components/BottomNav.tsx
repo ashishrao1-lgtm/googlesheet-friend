@@ -48,7 +48,7 @@ export function BottomNav() {
               className="relative flex h-14 w-14 items-center justify-center rounded-full shadow-lg ring-4 ring-card transition-all duration-200 ease-out group-hover:shadow-xl group-active:scale-95"
               style={{
                 background:
-                  "linear-gradient(135deg, var(--color-primary), color-mix(in okch, var(--color-primary) 55%, var(--color-info, #3b82f6)))",
+                  "linear-gradient(135deg, var(--color-primary), color-mix(in oklch, var(--color-primary) 55%, var(--color-info)))",
                 color: "var(--color-primary-foreground)",
               }}
             >

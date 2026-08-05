@@ -1,5 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 
+import { dayKey, parseDate } from "./dates";
+
 const SPREADSHEET_ID = "1WdOikE2Q0XbZxlIv6V0nLLpZJyoc3SNBmjeei2VFFC0";
 const GATEWAY = "https://connector-gateway.lovable.dev/google_sheets/v4";
 
@@ -86,13 +88,15 @@ async function fetchRanges(ranges: string[]) {
 }
 
 // Fetch the most recent rows from the tail of each sheet.
-const FIXED_TAIL = 8000;
-const ADHOC_TAIL = 6000;
+const FIXED_TAIL = 45000;
+const ADHOC_TAIL = 9000;
 
 type FleetPayload = {
   fixed: FixedRow[];
   adhoc: AdhocRow[];
   fetchedAt: string;
+  /** Earliest reporting day present in the loaded window (YYYY-MM-DD), for coverage hints. */
+  coverageFrom: string | null;
 };
 
 // Module-level cache to survive across requests on the same worker instance.
@@ -171,7 +175,18 @@ async function loadFleetData(): Promise<FleetPayload> {
       ontimePlacement: r[28] ?? "",
     }));
 
-  return { fixed: fixedRows, adhoc: adhocRows, fetchedAt: new Date().toISOString() };
+  let earliest: Date | null = null;
+  for (const r of fixedRows) {
+    const d = parseDate(r.reportingTime || r.attendanceDate);
+    if (d && (!earliest || d < earliest)) earliest = d;
+  }
+
+  return {
+    fixed: fixedRows,
+    adhoc: adhocRows,
+    fetchedAt: new Date().toISOString(),
+    coverageFrom: earliest ? dayKey(earliest) : null,
+  };
 }
 
 export const getFleetData = createServerFn({ method: "GET" }).handler(async () => {

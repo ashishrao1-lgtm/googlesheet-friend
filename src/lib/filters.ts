@@ -31,8 +31,9 @@ export function activeCount(f: FilterState): number {
 import { parseDate } from "./dates";
 
 function inDateRange(dateStr: string, from: string, to: string): boolean {
+  if (!from && !to) return true;
   const d = parseDate(dateStr);
-  if (!d) return !from && !to ? true : false;
+  if (!d) return false;
   if (from) {
     const df = new Date(from + "T00:00:00");
     if (d < df) return false;
@@ -53,7 +54,13 @@ export function applyFixedFilters(rows: FixedRow[], f: FilterState): FixedRow[] 
     if (f.center && r.center !== f.center) return false;
     if (f.facilityType && r.facilityType !== f.facilityType) return false;
     if (f.status && r.status !== f.status) return false;
-    if ((f.dateFrom || f.dateTo) && !inDateRange(r.attendanceDate, f.dateFrom, f.dateTo)) return false;
+    // Rows pending attendance have an EMPTY attendanceDate — reportingTime is the
+    // authoritative day for a fixed contract, so filter on that first.
+    if (
+      (f.dateFrom || f.dateTo) &&
+      !inDateRange(r.reportingTime || r.attendanceDate, f.dateFrom, f.dateTo)
+    )
+      return false;
     return true;
   });
 }
@@ -67,7 +74,11 @@ export function applyAdhocFilters(rows: AdhocRow[], f: FilterState): AdhocRow[] 
     if (f.center && r.center !== f.center) return false;
     if (f.facilityType && r.facilityType !== f.facilityType) return false;
     if (f.status && r.ticketStatus !== f.status) return false;
-    if ((f.dateFrom || f.dateTo) && !inDateRange(r.creationTime, f.dateFrom, f.dateTo)) return false;
+    if (
+      (f.dateFrom || f.dateTo) &&
+      !inDateRange(r.creationTime || r.reportingTime, f.dateFrom, f.dateTo)
+    )
+      return false;
     return true;
   });
 }

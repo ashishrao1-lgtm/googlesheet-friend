@@ -61,6 +61,15 @@ export const Route = createFileRoute("/")({
   component: DashboardRoute,
 });
 
+function CoverageNote({ from }: { from: string }) {
+  return (
+    <p className="rounded-xl border border-border/60 bg-card px-3 py-2 text-[11px] leading-relaxed text-muted-foreground">
+      Loaded data starts {new Date(from + "T00:00:00").toLocaleDateString(undefined, { day: "2-digit", month: "short" })}.
+      The selected date is outside that window, so counts may be incomplete.
+    </p>
+  );
+}
+
 function DashboardRoute() {
   return <AuthGate>{(session) => <DashboardPage session={session} />}</AuthGate>;
 }
@@ -142,9 +151,18 @@ function DashboardPage({ session }: { session: FleetSession }) {
         const d = parseDate(r.reportingTime);
         return !!d && sameDay(d, today);
       })
-      .filter((r) => !resolved.has(fixedAlertId(r.contractNumber, r.attendanceDate)));
+      .filter((r) => !resolved.has(fixedAlertId(r.contractNumber, r.reportingTime)));
     return bySlaUrgency(list, (r) => r.reportingTime);
   }, [filteredFixed, resolved, today, filters.dateFrom, filters.dateTo]);
+
+  // Human label for the day currently in scope (explicit filter wins).
+  const scopeDate = filters.dateFrom || filters.dateTo || "";
+  const scopeLabel = scopeDate
+    ? new Date(scopeDate + "T00:00:00").toLocaleDateString(undefined, { day: "2-digit", month: "short" })
+    : null;
+  const outOfWindow = !!(
+    scopeDate && data.coverageFrom && scopeDate < data.coverageFrom
+  );
 
   const resolvedList = useMemo(() => {
     void resolvedTick;
@@ -202,7 +220,7 @@ function DashboardPage({ session }: { session: FleetSession }) {
   useEffect(() => {
     const ids = new Set([
       ...adhocAlerts.map((r) => adhocAlertId(r.ticketNo)),
-      ...fixedAlerts.map((r) => fixedAlertId(r.contractNumber, r.attendanceDate)),
+      ...fixedAlerts.map((r) => fixedAlertId(r.contractNumber, r.reportingTime)),
     ]);
     if (ids.size === 0) return;
     let seen: string[] = [];
@@ -219,7 +237,7 @@ function DashboardPage({ session }: { session: FleetSession }) {
   function dismissNew() {
     const ids = [
       ...adhocAlerts.map((r) => adhocAlertId(r.ticketNo)),
-      ...fixedAlerts.map((r) => fixedAlertId(r.contractNumber, r.attendanceDate)),
+      ...fixedAlerts.map((r) => fixedAlertId(r.contractNumber, r.reportingTime)),
     ];
     window.localStorage.setItem(seenKey, JSON.stringify(ids));
     setNewCount(0);
@@ -254,7 +272,7 @@ function DashboardPage({ session }: { session: FleetSession }) {
 
   function resolveFixed(r: FixedRow) {
     markResolved(session.dri, {
-      id: fixedAlertId(r.contractNumber, r.attendanceDate),
+      id: fixedAlertId(r.contractNumber, r.reportingTime),
       kind: "fixed",
       ref: r.contractNumber,
       label: `${r.vehicle || "Contract"} · ${r.contractNumber}`,
@@ -312,6 +330,16 @@ function DashboardPage({ session }: { session: FleetSession }) {
             Resolved ({resolvedList.length})
           </TabBtn>
         </div>
+
+        {scopeLabel && (
+          <button
+            onClick={() => setFilters({ ...filters, dateFrom: "", dateTo: "" })}
+            className="inline-flex items-center gap-1.5 rounded-full bg-[color-mix(in_oklch,var(--color-primary)_14%,transparent)] px-2.5 py-1 text-[11px] font-semibold text-[color:var(--color-primary)]"
+          >
+            Date: {scopeLabel}
+            <X className="h-3 w-3" />
+          </button>
+        )}
       </div>
 
       <div className="mt-4 flex-1 space-y-2.5 px-4">
@@ -336,11 +364,7 @@ function DashboardPage({ session }: { session: FleetSession }) {
             <SectionHeading
               icon={<AlertTriangle className="h-4 w-4" />}
               title="Adhoc tickets pending action"
-              subtitle={
-                todayAdhoc
-                  ? `Requested tickets today · ${todayAdhoc.toLocaleDateString(undefined, { day: "2-digit", month: "short" })}`
-                  : "Requested tickets — awaiting confirmation & placement"
-              }
+              subtitle={`${scopeLabel ?? todayAdhoc?.toLocaleDateString(undefined, { day: "2-digit", month: "short" }) ?? "Latest day"} · ${adhocAlerts.length} requested ticket${adhocAlerts.length === 1 ? "" : "s"}`}
             />
 
             {adhocAlerts.slice(0, 80).map((r, i) => (
@@ -353,13 +377,10 @@ function DashboardPage({ session }: { session: FleetSession }) {
           <>
             <SectionHeading
               icon={<AlertTriangle className="h-4 w-4" />}
-              title="Fixed contracts pending attendance"
-              subtitle={
-                today
-                  ? `Vehicles yet to mark in today · ${today.toLocaleDateString(undefined, { day: "2-digit", month: "short" })}`
-                  : "Vehicles yet to be marked in at the facility"
-              }
+              title="Fixed pending to mark in"
+              subtitle={`${scopeLabel ?? today?.toLocaleDateString(undefined, { day: "2-digit", month: "short" }) ?? "Latest day"} · ${fixedAlerts.length} vehicle${fixedAlerts.length === 1 ? "" : "s"}`}
             />
+            {outOfWindow && <CoverageNote from={data.coverageFrom!} />}
             {fixedAlerts.slice(0, 80).map((r, i) => (
               <FixedAlertCard
                 key={`${r.contractNumber}-${r.attendanceDate}-${i}`}

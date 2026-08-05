@@ -107,6 +107,12 @@ function TrackingPage({ session }: { session: FleetSession }) {
 
   const options = tab === "adhoc" ? uniqueAdhocOptions(mineAdhoc) : uniqueFixedOptions(mineFixed);
 
+  const scopeDate = filters.dateFrom || filters.dateTo || "";
+  const scopeLabel = scopeDate
+    ? new Date(scopeDate + "T00:00:00").toLocaleDateString(undefined, { day: "2-digit", month: "short" })
+    : null;
+  const outOfWindow = !!(scopeDate && data.coverageFrom && scopeDate < data.coverageFrom);
+
   function track(action: "called_driver" | "called_vendor" | "whatsapp", ref: string, kind: "adhoc" | "fixed", label: string, center: string) {
     void logAction({ data: { dri: session.dri, ref, kind, action, label, center } }).catch(() => {});
   }
@@ -141,6 +147,34 @@ function TrackingPage({ session }: { session: FleetSession }) {
             Fixed — pending ({fixedPending.length})
           </button>
         </div>
+
+
+
+        <div className="flex items-center justify-between gap-2 text-[11px] text-muted-foreground">
+          <span className="truncate font-semibold">
+            {tab === "fixed" ? "Fixed pending to mark in" : "Adhoc — truck confirmed"}
+            {scopeLabel ? ` · ${scopeLabel}` : ""} ·{" "}
+            {tab === "fixed" ? fixedPending.length : adhocTrips.length}
+          </span>
+          {scopeLabel && (
+            <button
+              onClick={() => setFilters({ ...filters, dateFrom: "", dateTo: "" })}
+              className="shrink-0 rounded-full bg-[color-mix(in_oklch,var(--color-primary)_14%,transparent)] px-2 py-0.5 font-semibold text-[color:var(--color-primary)]"
+            >
+              Clear date
+            </button>
+          )}
+        </div>
+        {outOfWindow && (
+          <p className="text-[11px] leading-relaxed text-muted-foreground">
+            Loaded data starts{" "}
+            {new Date(data.coverageFrom + "T00:00:00").toLocaleDateString(undefined, {
+              day: "2-digit",
+              month: "short",
+            })}
+            ; counts for earlier dates may be incomplete.
+          </p>
+        )}
       </div>
 
       <div className="mt-3 flex-1 space-y-2 px-4">
