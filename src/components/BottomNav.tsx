@@ -45,7 +45,7 @@ export function BottomNav() {
             className="group -mt-8 flex flex-col items-center"
           >
             <span
-              className="relative flex h-14 w-14 items-center justify-center rounded-full bg-gradient-primary text-primary-foreground shadow-lg ring-4 ring-card transition-all duration-200 ease-out group-hover:shadow-xl group-active:scale-95"
+              className="relative flex h-14 w-14 cursor-pointer items-center justify-center rounded-full bg-gradient-primary text-primary-foreground shadow-lg ring-4 ring-card transition-all duration-200 ease-out touch-manipulation group-hover:-translate-y-0.5 group-hover:shadow-xl group-hover:brightness-110 group-active:scale-95 group-active:shadow-md group-active:brightness-95 group-focus-visible:outline-2 group-focus-visible:outline-primary group-focus-visible:outline-offset-2 group-focus-visible:ring-4 group-focus-visible:ring-primary/30"
             >
 
               <Home className="h-6 w-6" strokeWidth={2.4} />
