@@ -45,13 +45,9 @@ export function BottomNav() {
             className="group -mt-8 flex flex-col items-center"
           >
             <span
-              className="relative flex h-14 w-14 items-center justify-center rounded-full shadow-lg ring-4 ring-card transition-all duration-200 ease-out group-hover:shadow-xl group-active:scale-95"
-              style={{
-                background:
-                  "linear-gradient(135deg, var(--color-primary), color-mix(in oklch, var(--color-primary) 55%, var(--color-info)))",
-                color: "var(--color-primary-foreground)",
-              }}
+              className="relative flex h-14 w-14 items-center justify-center rounded-full bg-gradient-primary text-primary-foreground shadow-lg ring-4 ring-card transition-all duration-200 ease-out group-hover:shadow-xl group-active:scale-95"
             >
+
               <Home className="h-6 w-6" strokeWidth={2.4} />
               {badge > 0 && (
                 <span

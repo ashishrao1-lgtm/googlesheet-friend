@@ -75,6 +75,79 @@
   --shadow-card-hover: 0 2px 4px oklch(0.2 0.02 260 / 0.06), 0 14px 32px -14px oklch(0.2 0.02 260 / 0.28);
 }
 
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: oklch(0.14 0.02 260);
+    --foreground: oklch(0.97 0.01 260);
+    --card: oklch(0.19 0.02 260);
+    --card-foreground: oklch(0.97 0.01 260);
+    --popover: oklch(0.2 0.02 260);
+    --popover-foreground: oklch(0.97 0.01 260);
+    --primary: oklch(0.62 0.16 260);
+    --primary-foreground: oklch(0.99 0 0);
+    --secondary: oklch(0.25 0.02 260);
+    --secondary-foreground: oklch(0.97 0.01 260);
+    --muted: oklch(0.25 0.02 260);
+    --muted-foreground: oklch(0.7 0.02 260);
+    --accent: oklch(0.3 0.05 260);
+    --accent-foreground: oklch(0.97 0.01 260);
+    --destructive: oklch(0.65 0.22 25);
+    --destructive-foreground: oklch(0.99 0 0);
+    --border: oklch(0.3 0.01 260);
+    --input: oklch(0.3 0.01 260);
+    --ring: oklch(0.75 0.1 260);
+
+    --success: oklch(0.7 0.16 145);
+    --success-foreground: oklch(0.99 0 0);
+    --warning: oklch(0.8 0.16 80);
+    --warning-foreground: oklch(0.2 0.02 60);
+    --info: oklch(0.7 0.16 260);
+    --info-foreground: oklch(0.99 0 0);
+
+    --surface: oklch(0.16 0.02 260);
+    --surface-2: oklch(0.22 0.02 260);
+
+    --shadow-card: 0 1px 2px oklch(0 0 0 / 0.3), 0 6px 20px -12px oklch(0 0 0 / 0.5);
+    --shadow-card-hover: 0 2px 4px oklch(0 0 0 / 0.35), 0 14px 32px -14px oklch(0 0 0 / 0.55);
+  }
+}
+
+.dark {
+  --background: oklch(0.14 0.02 260);
+  --foreground: oklch(0.97 0.01 260);
+  --card: oklch(0.19 0.02 260);
+  --card-foreground: oklch(0.97 0.01 260);
+  --popover: oklch(0.2 0.02 260);
+  --popover-foreground: oklch(0.97 0.01 260);
+  --primary: oklch(0.62 0.16 260);
+  --primary-foreground: oklch(0.99 0 0);
+  --secondary: oklch(0.25 0.02 260);
+  --secondary-foreground: oklch(0.97 0.01 260);
+  --muted: oklch(0.25 0.02 260);
+  --muted-foreground: oklch(0.7 0.02 260);
+  --accent: oklch(0.3 0.05 260);
+  --accent-foreground: oklch(0.97 0.01 260);
+  --destructive: oklch(0.65 0.22 25);
+  --destructive-foreground: oklch(0.99 0 0);
+  --border: oklch(0.3 0.01 260);
+  --input: oklch(0.3 0.01 260);
+  --ring: oklch(0.75 0.1 260);
+
+  --success: oklch(0.7 0.16 145);
+  --success-foreground: oklch(0.99 0 0);
+  --warning: oklch(0.8 0.16 80);
+  --warning-foreground: oklch(0.2 0.02 60);
+  --info: oklch(0.7 0.16 260);
+  --info-foreground: oklch(0.99 0 0);
+
+  --surface: oklch(0.16 0.02 260);
+  --surface-2: oklch(0.22 0.02 260);
+
+  --shadow-card: 0 1px 2px oklch(0 0 0 / 0.3), 0 6px 20px -12px oklch(0 0 0 / 0.5);
+  --shadow-card-hover: 0 2px 4px oklch(0 0 0 / 0.35), 0 14px 32px -14px oklch(0 0 0 / 0.55);
+}
+
+
 @layer base {
   * { border-color: var(--color-border); }
   body {
@@ -146,4 +219,9 @@
 @utility badge-pulse {
   animation: fab-badge-pulse 1.6s ease-in-out infinite;
 }
+
+@utility bg-gradient-primary {
+  background: linear-gradient(135deg, var(--color-primary), color-mix(in oklch, var(--color-primary) 55%, var(--color-info)));
+}
+
 
