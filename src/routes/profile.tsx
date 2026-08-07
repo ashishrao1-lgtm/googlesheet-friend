@@ -5,6 +5,8 @@ import { useEffect, useState } from "react";
 import { BottomNav } from "@/components/BottomNav";
 import { AuthGate } from "@/components/AuthGate";
 import { FeedbackSheet } from "@/components/FeedbackSheet";
+import { ThemeToggle } from "@/components/ThemeToggle";
+
 
 import { clearSession, formatDateTime, type FleetSession } from "@/lib/session";
 
@@ -77,9 +79,11 @@ function ProfilePage({ session }: { session: FleetSession }) {
 
       <section className="mt-4 px-4">
         <div className="divide-y divide-border overflow-hidden rounded-2xl bg-card shadow-sm">
+          <ThemeToggle />
           <NotificationToggle />
         </div>
       </section>
+
 
       <section className="mt-4 space-y-3 px-4">
         <FeedbackSheet reporterName={session.dri} />
