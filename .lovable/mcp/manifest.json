@@ -1,0 +1,232 @@
+{
+  "version": 1,
+  "sdk_version": "0.26.1",
+  "path": "/mcp",
+  "auth": {
+    "type": "oauth",
+    "issuer": "https://bxjfeexigtrlejorhvgi.supabase.co/auth/v1",
+    "accepted_audiences": [
+      "authenticated"
+    ]
+  },
+  "mcp": {
+    "server": {
+      "name": "intracity-fleet",
+      "version": "0.1.0",
+      "title": "Intracity Fleet"
+    },
+    "tools": [
+      {
+        "name": "list_pending_fixed_attendance",
+        "title": "Fixed contracts pending attendance",
+        "description": "List fixed-vehicle contracts whose attendance is still not marked in (vehicle not yet reported at the centre). Filter by fleet DRI, reporting day (YYYY-MM-DD) and centre.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "dri": {
+              "type": "string",
+              "description": "Fleet DRI name, e.g. 'Ajaydev K J'."
+            },
+            "date": {
+              "type": "string",
+              "description": "Reporting day as YYYY-MM-DD. Defaults to all loaded days."
+            },
+            "center": {
+              "type": "string",
+              "description": "Centre name substring."
+            },
+            "limit": {
+              "type": "integer",
+              "description": "Max rows to return (default 50, cap 200)."
+            }
+          },
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "list_adhoc_tickets",
+        "title": "Adhoc tickets",
+        "description": "List adhoc placement tickets with vendor, centre, reporting time, driver/vendor phone numbers and on-time placement status. Filter by fleet DRI, ticket status (e.g. 'requested', 'truck confirmed'), reporting day and centre.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "dri": {
+              "type": "string",
+              "description": "Fleet DRI name."
+            },
+            "status": {
+              "type": "string",
+              "description": "Ticket status substring, e.g. 'requested' or 'confirmed'."
+            },
+            "date": {
+              "type": "string",
+              "description": "Reporting day as YYYY-MM-DD."
+            },
+            "center": {
+              "type": "string",
+              "description": "Centre name substring."
+            },
+            "pendingArrivalOnly": {
+              "type": "boolean",
+              "description": "Only tickets where the vehicle has not yet been marked in."
+            },
+            "limit": {
+              "type": "integer",
+              "description": "Max rows to return (default 50, cap 200)."
+            }
+          },
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "vendor_ontime_performance",
+        "title": "Vendor on-time performance",
+        "description": "Vendor-level on-time compliance. For 'fixed' it is count(status = On-time) / total contracts. For 'adhoc' it is 1 - (delayed ontime_placement / total tickets), plus the Axle-app bid share.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "enum": [
+                "fixed",
+                "adhoc"
+              ],
+              "description": "Which dataset to summarise."
+            },
+            "dri": {
+              "type": "string",
+              "description": "Fleet DRI name."
+            },
+            "date": {
+              "type": "string",
+              "description": "Reporting day as YYYY-MM-DD."
+            },
+            "vendor": {
+              "type": "string",
+              "description": "Vendor name substring."
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "log_fleet_action",
+        "title": "Log a follow-up action",
+        "description": "Record a follow-up action against an adhoc ticket or fixed contract (resolved, called driver, called vendor, whatsapp, undo) so it shows up in the app's actioned history.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "dri": {
+              "type": "string",
+              "description": "Fleet DRI the action belongs to."
+            },
+            "ref": {
+              "type": "string",
+              "description": "Ticket number or contract number."
+            },
+            "kind": {
+              "type": "string",
+              "enum": [
+                "adhoc",
+                "fixed"
+              ]
+            },
+            "action": {
+              "type": "string",
+              "enum": [
+                "resolved",
+                "called_driver",
+                "called_vendor",
+                "whatsapp",
+                "undo"
+              ]
+            },
+            "label": {
+              "type": "string",
+              "description": "Short human label for the record."
+            },
+            "center": {
+              "type": "string",
+              "description": "Centre name."
+            },
+            "note": {
+              "type": "string",
+              "description": "Optional free-text note."
+            }
+          },
+          "required": [
+            "dri",
+            "ref",
+            "kind",
+            "action"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "list_fleet_actions",
+        "title": "Follow-up action history",
+        "description": "Read the logged follow-up actions (resolved, calls, whatsapp) for a fleet DRI, newest first. Optionally filter to one ticket or contract reference.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "dri": {
+              "type": "string",
+              "description": "Fleet DRI name."
+            },
+            "ref": {
+              "type": "string",
+              "description": "Ticket or contract number to filter on."
+            },
+            "limit": {
+              "type": "integer",
+              "description": "Max rows (default 50, cap 200)."
+            }
+          },
+          "required": [
+            "dri"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      }
+    ]
+  }
+}
