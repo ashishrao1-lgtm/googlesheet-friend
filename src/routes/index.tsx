@@ -124,11 +124,18 @@ function DashboardPage({ session }: { session: FleetSession }) {
     return resolvedIds(session.dri);
   }, [session.dri, resolvedTick]);
 
+  // Alerts show ONLY rows whose reporting time has already breached.
+  const isBreached = (reportingTime: string | undefined) => {
+    const m = timeToBreach(reportingTime);
+    return m != null && m <= 0;
+  };
+
   // Only latest-date open adhoc tickets (unless the user set an explicit range).
   const adhocAlerts = useMemo(() => {
     const dateActive = !!(filters.dateFrom || filters.dateTo);
     const list = filteredAdhoc
       .filter(isAdhocOpen)
+      .filter((r) => isBreached(r.reportingTime))
       .filter((r) => {
         if (dateActive) return true;
         if (!todayAdhoc) return true;
@@ -145,6 +152,7 @@ function DashboardPage({ session }: { session: FleetSession }) {
     const dateActive = !!(filters.dateFrom || filters.dateTo);
     const list = filteredFixed
       .filter(isFixedMissing)
+      .filter((r) => isBreached(r.reportingTime))
       .filter((r) => {
         if (dateActive) return true; // user chose an explicit range
         if (!today) return true;
@@ -154,6 +162,7 @@ function DashboardPage({ session }: { session: FleetSession }) {
       .filter((r) => !resolved.has(fixedAlertId(r.contractNumber, r.reportingTime)));
     return bySlaUrgency(list, (r) => r.reportingTime);
   }, [filteredFixed, resolved, today, filters.dateFrom, filters.dateTo]);
+
 
   // Human label for the day currently in scope (explicit filter wins).
   const scopeDate = filters.dateFrom || filters.dateTo || "";
