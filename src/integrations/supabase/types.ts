@@ -77,6 +77,261 @@ export type Database = {
         }
         Relationships: []
       }
+      fleet_adhoc_current: {
+        Row: {
+          attendance_in_time: string
+          bid_amount: string
+          bid_origin: string
+          center: string
+          city: string
+          created_at: string
+          creation_bucket: string
+          creation_time: string
+          dr: string
+          driver_phone: string
+          duration: string
+          facility_type: string
+          fleet_dri: string
+          indent_id: string
+          lob: string
+          ontime_placement: string
+          reason: string
+          removed_at: string | null
+          reporting_time: string
+          row_key: string
+          sdr: string
+          sp_phone: string
+          state: string
+          synced_at: string
+          target_price: string
+          ticket_no: string
+          ticket_status: string
+          vehicle: string
+          vehicle_type: string
+          vendor: string
+          zone: string
+        }
+        Insert: {
+          attendance_in_time?: string
+          bid_amount?: string
+          bid_origin?: string
+          center?: string
+          city?: string
+          created_at?: string
+          creation_bucket?: string
+          creation_time?: string
+          dr?: string
+          driver_phone?: string
+          duration?: string
+          facility_type?: string
+          fleet_dri?: string
+          indent_id?: string
+          lob?: string
+          ontime_placement?: string
+          reason?: string
+          removed_at?: string | null
+          reporting_time?: string
+          row_key: string
+          sdr?: string
+          sp_phone?: string
+          state?: string
+          synced_at?: string
+          target_price?: string
+          ticket_no?: string
+          ticket_status?: string
+          vehicle?: string
+          vehicle_type?: string
+          vendor?: string
+          zone?: string
+        }
+        Update: {
+          attendance_in_time?: string
+          bid_amount?: string
+          bid_origin?: string
+          center?: string
+          city?: string
+          created_at?: string
+          creation_bucket?: string
+          creation_time?: string
+          dr?: string
+          driver_phone?: string
+          duration?: string
+          facility_type?: string
+          fleet_dri?: string
+          indent_id?: string
+          lob?: string
+          ontime_placement?: string
+          reason?: string
+          removed_at?: string | null
+          reporting_time?: string
+          row_key?: string
+          sdr?: string
+          sp_phone?: string
+          state?: string
+          synced_at?: string
+          target_price?: string
+          ticket_no?: string
+          ticket_status?: string
+          vehicle?: string
+          vehicle_type?: string
+          vendor?: string
+          zone?: string
+        }
+        Relationships: []
+      }
+      fleet_fixed_current: {
+        Row: {
+          attendance_date: string
+          attendance_status: string
+          center: string
+          city: string
+          contract_code: string
+          contract_days: string
+          contract_hrs: string
+          contract_number: string
+          created_at: string
+          facility_type: string
+          fleet_dri: string
+          removed_at: string | null
+          reported_at: string
+          reporting_time: string
+          row_key: string
+          start_date: string
+          state: string
+          status: string
+          synced_at: string
+          vehicle: string
+          vendor: string
+          zone: string
+        }
+        Insert: {
+          attendance_date?: string
+          attendance_status?: string
+          center?: string
+          city?: string
+          contract_code?: string
+          contract_days?: string
+          contract_hrs?: string
+          contract_number?: string
+          created_at?: string
+          facility_type?: string
+          fleet_dri?: string
+          removed_at?: string | null
+          reported_at?: string
+          reporting_time?: string
+          row_key: string
+          start_date?: string
+          state?: string
+          status?: string
+          synced_at?: string
+          vehicle?: string
+          vendor?: string
+          zone?: string
+        }
+        Update: {
+          attendance_date?: string
+          attendance_status?: string
+          center?: string
+          city?: string
+          contract_code?: string
+          contract_days?: string
+          contract_hrs?: string
+          contract_number?: string
+          created_at?: string
+          facility_type?: string
+          fleet_dri?: string
+          removed_at?: string | null
+          reported_at?: string
+          reporting_time?: string
+          row_key?: string
+          start_date?: string
+          state?: string
+          status?: string
+          synced_at?: string
+          vehicle?: string
+          vendor?: string
+          zone?: string
+        }
+        Relationships: []
+      }
+      fleet_snapshots: {
+        Row: {
+          attendance_status: string
+          center: string
+          created_at: string
+          dri: string
+          id: string
+          kind: string
+          ref: string
+          reported_at: string
+          reporting_time: string
+          status: string
+          synced_at: string
+          vendor: string
+        }
+        Insert: {
+          attendance_status?: string
+          center?: string
+          created_at?: string
+          dri?: string
+          id?: string
+          kind: string
+          ref: string
+          reported_at?: string
+          reporting_time?: string
+          status?: string
+          synced_at?: string
+          vendor?: string
+        }
+        Update: {
+          attendance_status?: string
+          center?: string
+          created_at?: string
+          dri?: string
+          id?: string
+          kind?: string
+          ref?: string
+          reported_at?: string
+          reporting_time?: string
+          status?: string
+          synced_at?: string
+          vendor?: string
+        }
+        Relationships: []
+      }
+      fleet_sync_runs: {
+        Row: {
+          adhoc_rows: number
+          created_at: string
+          error: string | null
+          finished_at: string | null
+          fixed_rows: number
+          id: string
+          started_at: string
+          status: string
+        }
+        Insert: {
+          adhoc_rows?: number
+          created_at?: string
+          error?: string | null
+          finished_at?: string | null
+          fixed_rows?: number
+          id?: string
+          started_at?: string
+          status?: string
+        }
+        Update: {
+          adhoc_rows?: number
+          created_at?: string
+          error?: string | null
+          finished_at?: string | null
+          fixed_rows?: number
+          id?: string
+          started_at?: string
+          status?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
