@@ -128,7 +128,7 @@ function TrackingPage({ session }: { session: FleetSession }) {
             <h1 className="truncate text-base font-semibold">Live Tracking</h1>
             <p className="truncate text-[11px] text-muted-foreground">{session.dri}</p>
           </div>
-          <FilterButton filters={filters} onClick={() => setFiltersOpen(true)} />
+          
         </div>
 
         <div className="grid grid-cols-2 gap-1 rounded-full bg-secondary p-1 text-[12px] font-semibold">
