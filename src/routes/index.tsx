@@ -370,26 +370,37 @@ function DashboardPage({ session }: { session: FleetSession }) {
 
         {tab === "adhoc" && (
           <>
-            <SectionHeading
-              icon={<AlertTriangle className="h-4 w-4" />}
-              title="Adhoc tickets pending action"
-              subtitle={`${scopeLabel ?? todayAdhoc?.toLocaleDateString(undefined, { day: "2-digit", month: "short" }) ?? "Latest day"} · ${adhocAlerts.length} requested ticket${adhocAlerts.length === 1 ? "" : "s"}`}
-            />
+            <div className="flex items-start justify-between gap-2">
+              <SectionHeading
+                icon={<AlertTriangle className="h-4 w-4" />}
+                title="Adhoc tickets — reporting breached"
+                subtitle={`${scopeLabel ?? todayAdhoc?.toLocaleDateString(undefined, { day: "2-digit", month: "short" }) ?? "Latest day"} · ${adhocAlerts.length} breached ticket${adhocAlerts.length === 1 ? "" : "s"}`}
+              />
+              <div className="shrink-0 pt-1">
+                <FilterButton filters={filters} onClick={() => setFiltersOpen(true)} />
+              </div>
+            </div>
 
             {adhocAlerts.slice(0, 80).map((r, i) => (
               <AdhocAlertCard key={r.ticketNo} row={r} index={i} onResolve={() => resolveAdhoc(r)} />
             ))}
-            {adhocAlerts.length === 0 && <EmptyState label="No open adhoc tickets. 🎉" />}
+            {adhocAlerts.length === 0 && <EmptyState label="No breached adhoc tickets. 🎉" />}
           </>
         )}
         {tab === "fixed" && (
           <>
-            <SectionHeading
-              icon={<AlertTriangle className="h-4 w-4" />}
-              title="Fixed pending to mark in"
-              subtitle={`${scopeLabel ?? today?.toLocaleDateString(undefined, { day: "2-digit", month: "short" }) ?? "Latest day"} · ${fixedAlerts.length} vehicle${fixedAlerts.length === 1 ? "" : "s"}`}
-            />
+            <div className="flex items-start justify-between gap-2">
+              <SectionHeading
+                icon={<AlertTriangle className="h-4 w-4" />}
+                title="Fixed contracts — reporting breached"
+                subtitle={`${scopeLabel ?? today?.toLocaleDateString(undefined, { day: "2-digit", month: "short" }) ?? "Latest day"} · ${fixedAlerts.length} vehicle${fixedAlerts.length === 1 ? "" : "s"}`}
+              />
+              <div className="shrink-0 pt-1">
+                <FilterButton filters={filters} onClick={() => setFiltersOpen(true)} />
+              </div>
+            </div>
             {outOfWindow && <CoverageNote from={data.coverageFrom!} />}
+
             {fixedAlerts.slice(0, 80).map((r, i) => (
               <FixedAlertCard
                 key={`${r.contractNumber}-${r.attendanceDate}-${i}`}
