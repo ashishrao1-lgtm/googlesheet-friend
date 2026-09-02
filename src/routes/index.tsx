@@ -301,8 +301,8 @@ function DashboardPage({ session }: { session: FleetSession }) {
             </p>
           </div>
           <div className="flex shrink-0 items-center gap-2">
-            <FilterButton filters={filters} onClick={() => setFiltersOpen(true)} />
             <button
+
               onClick={refresh}
               className="flex h-9 w-9 items-center justify-center rounded-full bg-card text-muted-foreground shadow-sm transition-colors hover:text-foreground active:scale-95"
               aria-label="Refresh data"
