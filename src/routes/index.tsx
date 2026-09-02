@@ -124,11 +124,18 @@ function DashboardPage({ session }: { session: FleetSession }) {
     return resolvedIds(session.dri);
   }, [session.dri, resolvedTick]);
 
+  // Alerts show ONLY rows whose reporting time has already breached.
+  const isBreached = (reportingTime: string | undefined) => {
+    const m = timeToBreach(reportingTime);
+    return m != null && m <= 0;
+  };
+
   // Only latest-date open adhoc tickets (unless the user set an explicit range).
   const adhocAlerts = useMemo(() => {
     const dateActive = !!(filters.dateFrom || filters.dateTo);
     const list = filteredAdhoc
       .filter(isAdhocOpen)
+      .filter((r) => isBreached(r.reportingTime))
       .filter((r) => {
         if (dateActive) return true;
         if (!todayAdhoc) return true;
@@ -145,6 +152,7 @@ function DashboardPage({ session }: { session: FleetSession }) {
     const dateActive = !!(filters.dateFrom || filters.dateTo);
     const list = filteredFixed
       .filter(isFixedMissing)
+      .filter((r) => isBreached(r.reportingTime))
       .filter((r) => {
         if (dateActive) return true; // user chose an explicit range
         if (!today) return true;
@@ -154,6 +162,7 @@ function DashboardPage({ session }: { session: FleetSession }) {
       .filter((r) => !resolved.has(fixedAlertId(r.contractNumber, r.reportingTime)));
     return bySlaUrgency(list, (r) => r.reportingTime);
   }, [filteredFixed, resolved, today, filters.dateFrom, filters.dateTo]);
+
 
   // Human label for the day currently in scope (explicit filter wins).
   const scopeDate = filters.dateFrom || filters.dateTo || "";
@@ -301,8 +310,8 @@ function DashboardPage({ session }: { session: FleetSession }) {
             </p>
           </div>
           <div className="flex shrink-0 items-center gap-2">
-            <FilterButton filters={filters} onClick={() => setFiltersOpen(true)} />
             <button
+
               onClick={refresh}
               className="flex h-9 w-9 items-center justify-center rounded-full bg-card text-muted-foreground shadow-sm transition-colors hover:text-foreground active:scale-95"
               aria-label="Refresh data"
@@ -361,26 +370,37 @@ function DashboardPage({ session }: { session: FleetSession }) {
 
         {tab === "adhoc" && (
           <>
-            <SectionHeading
-              icon={<AlertTriangle className="h-4 w-4" />}
-              title="Adhoc tickets pending action"
-              subtitle={`${scopeLabel ?? todayAdhoc?.toLocaleDateString(undefined, { day: "2-digit", month: "short" }) ?? "Latest day"} · ${adhocAlerts.length} requested ticket${adhocAlerts.length === 1 ? "" : "s"}`}
-            />
+            <div className="flex items-start justify-between gap-2">
+              <SectionHeading
+                icon={<AlertTriangle className="h-4 w-4" />}
+                title="Adhoc tickets — reporting breached"
+                subtitle={`${scopeLabel ?? todayAdhoc?.toLocaleDateString(undefined, { day: "2-digit", month: "short" }) ?? "Latest day"} · ${adhocAlerts.length} breached ticket${adhocAlerts.length === 1 ? "" : "s"}`}
+              />
+              <div className="shrink-0 pt-1">
+                <FilterButton filters={filters} onClick={() => setFiltersOpen(true)} />
+              </div>
+            </div>
 
             {adhocAlerts.slice(0, 80).map((r, i) => (
               <AdhocAlertCard key={r.ticketNo} row={r} index={i} onResolve={() => resolveAdhoc(r)} />
             ))}
-            {adhocAlerts.length === 0 && <EmptyState label="No open adhoc tickets. 🎉" />}
+            {adhocAlerts.length === 0 && <EmptyState label="No breached adhoc tickets. 🎉" />}
           </>
         )}
         {tab === "fixed" && (
           <>
-            <SectionHeading
-              icon={<AlertTriangle className="h-4 w-4" />}
-              title="Fixed pending to mark in"
-              subtitle={`${scopeLabel ?? today?.toLocaleDateString(undefined, { day: "2-digit", month: "short" }) ?? "Latest day"} · ${fixedAlerts.length} vehicle${fixedAlerts.length === 1 ? "" : "s"}`}
-            />
+            <div className="flex items-start justify-between gap-2">
+              <SectionHeading
+                icon={<AlertTriangle className="h-4 w-4" />}
+                title="Fixed contracts — reporting breached"
+                subtitle={`${scopeLabel ?? today?.toLocaleDateString(undefined, { day: "2-digit", month: "short" }) ?? "Latest day"} · ${fixedAlerts.length} vehicle${fixedAlerts.length === 1 ? "" : "s"}`}
+              />
+              <div className="shrink-0 pt-1">
+                <FilterButton filters={filters} onClick={() => setFiltersOpen(true)} />
+              </div>
+            </div>
             {outOfWindow && <CoverageNote from={data.coverageFrom!} />}
+
             {fixedAlerts.slice(0, 80).map((r, i) => (
               <FixedAlertCard
                 key={`${r.contractNumber}-${r.attendanceDate}-${i}`}

@@ -150,7 +150,6 @@ function PerformancePage({ session }: { session: FleetSession }) {
             <h1 className="truncate text-base font-semibold">Performance</h1>
             <p className="truncate text-[11px] text-muted-foreground">{session.dri}</p>
           </div>
-          <FilterButton filters={filters} onClick={() => setFiltersOpen(true)} />
         </div>
         <div className="grid grid-cols-2 gap-1 rounded-full bg-secondary p-1 text-[12px] font-semibold">
           <button
@@ -203,6 +202,13 @@ function PerformancePage({ session }: { session: FleetSession }) {
 
       {scope === "fixed" && (
         <section className="mt-3 space-y-2 px-4">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <h2 className="text-sm font-semibold">Fixed performance</h2>
+              <p className="text-[11px] text-muted-foreground">On-time attendance by day and vendor</p>
+            </div>
+            <FilterButton filters={filters} onClick={() => setFiltersOpen(true)} />
+          </div>
           <SummaryTile
             title="Fixed on-time compliance"
             pct={fixedSummary.pct}
@@ -223,6 +229,13 @@ function PerformancePage({ session }: { session: FleetSession }) {
 
       {scope === "adhoc" && (
         <section className="mt-3 space-y-2 px-4">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <h2 className="text-sm font-semibold">Adhoc performance</h2>
+              <p className="text-[11px] text-muted-foreground">Placement and reporting compliance</p>
+            </div>
+            <FilterButton filters={filters} onClick={() => setFiltersOpen(true)} />
+          </div>
           <div className="grid grid-cols-2 gap-2">
             <SummaryTile
               title="Axle-app placement %"
