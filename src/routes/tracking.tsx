@@ -156,15 +156,16 @@ function TrackingPage({ session }: { session: FleetSession }) {
             {scopeLabel ? ` · ${scopeLabel}` : ""} ·{" "}
             {tab === "fixed" ? fixedPending.length : adhocTrips.length}
           </span>
-          {scopeLabel && (
-            <button
-              onClick={() => setFilters({ ...filters, dateFrom: "", dateTo: "" })}
-              className="shrink-0 rounded-full bg-[color-mix(in_oklch,var(--color-primary)_14%,transparent)] px-2 py-0.5 font-semibold text-[color:var(--color-primary)]"
-            >
-              Clear date
-            </button>
-          )}
+          <FilterButton filters={filters} onClick={() => setFiltersOpen(true)} />
         </div>
+        {scopeLabel && (
+          <button
+            onClick={() => setFilters({ ...filters, dateFrom: "", dateTo: "" })}
+            className="self-start rounded-full bg-[color-mix(in_oklch,var(--color-primary)_14%,transparent)] px-2 py-0.5 text-[11px] font-semibold text-[color:var(--color-primary)]"
+          >
+            Clear date
+          </button>
+        )}
         {outOfWindow && (
           <p className="text-[11px] leading-relaxed text-muted-foreground">
             Loaded data starts{" "}
