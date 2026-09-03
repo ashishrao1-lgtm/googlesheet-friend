@@ -22,6 +22,7 @@ import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } fr
 import { Route as Char91DotmcpChar93ListToolsRouteImport } from './routes/[.mcp]/list-tools'
 import { Route as Char91DotmcpChar93InvokeToolToolRouteImport } from './routes/[.mcp]/invoke-tool/$tool'
 import { Route as DotlovableOauthConsentRouteImport } from './routes/[.]lovable.oauth.consent'
+import { Route as ApiPublicHooksSyncFleetRouteImport } from './routes/api/public/hooks/sync-fleet'
 
 const TrackingRoute = TrackingRouteImport.update({
   id: '/tracking',
@@ -91,6 +92,11 @@ const DotlovableOauthConsentRoute = DotlovableOauthConsentRouteImport.update({
   path: '/.lovable/oauth/consent',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicHooksSyncFleetRoute = ApiPublicHooksSyncFleetRouteImport.update({
+  id: '/api/public/hooks/sync-fleet',
+  path: '/api/public/hooks/sync-fleet',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -106,6 +112,7 @@ export interface FileRoutesByFullPath {
   '/vehicle/$id': typeof VehicleIdRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
+  '/api/public/hooks/sync-fleet': typeof ApiPublicHooksSyncFleetRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -121,6 +128,7 @@ export interface FileRoutesByTo {
   '/vehicle/$id': typeof VehicleIdRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
+  '/api/public/hooks/sync-fleet': typeof ApiPublicHooksSyncFleetRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -137,6 +145,7 @@ export interface FileRoutesById {
   '/vehicle/$id': typeof VehicleIdRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
+  '/api/public/hooks/sync-fleet': typeof ApiPublicHooksSyncFleetRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -154,6 +163,7 @@ export interface FileRouteTypes {
     | '/vehicle/$id'
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
+    | '/api/public/hooks/sync-fleet'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -169,6 +179,7 @@ export interface FileRouteTypes {
     | '/vehicle/$id'
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
+    | '/api/public/hooks/sync-fleet'
   id:
     | '__root__'
     | '/'
@@ -184,6 +195,7 @@ export interface FileRouteTypes {
     | '/vehicle/$id'
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
+    | '/api/public/hooks/sync-fleet'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -200,6 +212,7 @@ export interface RootRouteChildren {
   VehicleIdRoute: typeof VehicleIdRoute
   DotlovableOauthConsentRoute: typeof DotlovableOauthConsentRoute
   Char91DotmcpChar93InvokeToolToolRoute: typeof Char91DotmcpChar93InvokeToolToolRoute
+  ApiPublicHooksSyncFleetRoute: typeof ApiPublicHooksSyncFleetRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -295,6 +308,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DotlovableOauthConsentRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/hooks/sync-fleet': {
+      id: '/api/public/hooks/sync-fleet'
+      path: '/api/public/hooks/sync-fleet'
+      fullPath: '/api/public/hooks/sync-fleet'
+      preLoaderRoute: typeof ApiPublicHooksSyncFleetRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -313,6 +333,7 @@ const rootRouteChildren: RootRouteChildren = {
   VehicleIdRoute: VehicleIdRoute,
   DotlovableOauthConsentRoute: DotlovableOauthConsentRoute,
   Char91DotmcpChar93InvokeToolToolRoute: Char91DotmcpChar93InvokeToolToolRoute,
+  ApiPublicHooksSyncFleetRoute: ApiPublicHooksSyncFleetRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
