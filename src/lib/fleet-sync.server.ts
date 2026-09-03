@@ -230,7 +230,8 @@ export async function runFleetSync(): Promise<SyncResult> {
       })),
     ]);
 
-    await supabaseAdmin
+    if (!run?.id) throw new Error("Could not create sync run record");
+    const { error: finishError } = await supabaseAdmin
       .from("fleet_sync_runs")
       .update({
         finished_at: new Date().toISOString(),
@@ -238,7 +239,8 @@ export async function runFleetSync(): Promise<SyncResult> {
         fixed_rows: seenFixed.size,
         adhoc_rows: seenAdhoc.size,
       })
-      .eq("id", run!.id);
+      .eq("id", run.id);
+    if (finishError) throw new Error(`Could not finish sync run: ${finishError.message}`);
 
     return {
       fixedRows: seenFixed.size,
