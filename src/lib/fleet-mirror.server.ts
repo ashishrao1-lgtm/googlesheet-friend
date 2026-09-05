@@ -5,7 +5,8 @@ import { dayKey, parseDate } from "./dates";
 import { getFleetPayload, type AdhocRow, type FixedRow, type FleetPayload } from "./fleet-data.server";
 
 const STALE_MS = 15 * 60_000;
-const PAGE = 1000;
+const PAGE = 5000;
+
 
 async function fetchAll<T>(table: "fleet_fixed_current" | "fleet_adhoc_current"): Promise<T[]> {
   const out: T[] = [];
@@ -104,16 +105,33 @@ export async function getMirrorPayload(): Promise<FleetPayload | null> {
   return { fixed, adhoc, fetchedAt: lastOk, coverageFrom: earliest ? dayKey(earliest) : null };
 }
 
-/** Mirror first, live sheet as fallback. */
+/** Mirror first, live sheet as fallback. Cached briefly so bursts share one read. */
+let cache: { at: number; payload: FleetPayload } | null = null;
+let inflight: Promise<FleetPayload> | null = null;
+const CACHE_MS = 60_000;
+
 export async function getFleetPayloadCached(): Promise<FleetPayload> {
-  try {
-    const mirror = await getMirrorPayload();
-    if (mirror) return mirror;
-  } catch (err) {
-    console.warn("mirror read failed, falling back to Sheets:", (err as Error).message);
-  }
-  return getFleetPayload();
+  if (cache && Date.now() - cache.at < CACHE_MS) return cache.payload;
+  if (inflight) return inflight;
+  inflight = (async () => {
+    try {
+      const mirror = await getMirrorPayload();
+      if (mirror) return mirror;
+    } catch (err) {
+      console.warn("mirror read failed, falling back to Sheets:", (err as Error).message);
+    }
+    return getFleetPayload();
+  })()
+    .then((payload) => {
+      cache = { at: Date.now(), payload };
+      return payload;
+    })
+    .finally(() => {
+      inflight = null;
+    });
+  return inflight;
 }
+
 
 export async function getLastSync(): Promise<{ syncedAt: string | null; status: string | null }> {
   const { data } = await supabaseAdmin

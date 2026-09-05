@@ -180,28 +180,33 @@ export async function runFleetSync(): Promise<SyncResult> {
       (exAdhoc ?? []).map((r) => [r.row_key, `${r.ticket_status}|${r.attendance_in_time}|${r.ontime_placement}`]),
     );
 
-    const fixedChanged: FixedMirror[] = [];
+    // Dedupe by row_key: the sheet can repeat a natural key; last one wins.
+    const fixedMap = new Map<string, FixedMirror>();
     const seenFixed = new Set<string>();
     for (const r of payload.fixed) {
       const key = fixedKey(r);
       if (!key.replace(/\|/g, "")) continue;
       seenFixed.add(key);
       const sig = `${r.status}|${r.attendanceStatus}|${r.reportedAt}`;
-      if (fixedState.get(key) !== sig) fixedChanged.push(toFixedMirror(r, syncedAt));
+      if (fixedState.get(key) !== sig) fixedMap.set(key, toFixedMirror(r, syncedAt));
     }
 
-    const adhocChanged: AdhocMirror[] = [];
+    const adhocMap = new Map<string, AdhocMirror>();
     const seenAdhoc = new Set<string>();
     for (const r of payload.adhoc) {
       const key = adhocKey(r);
       if (!key) continue;
       seenAdhoc.add(key);
       const sig = `${r.ticketStatus}|${r.attendanceInTime}|${r.ontimePlacement}`;
-      if (adhocState.get(key) !== sig) adhocChanged.push(toAdhocMirror(r, syncedAt));
+      if (adhocState.get(key) !== sig) adhocMap.set(key, toAdhocMirror(r, syncedAt));
     }
+
+    const fixedChanged = [...fixedMap.values()];
+    const adhocChanged = [...adhocMap.values()];
 
     await upsertChunks("fleet_fixed_current", fixedChanged);
     await upsertChunks("fleet_adhoc_current", adhocChanged);
+
 
     await insertSnapshots([
       ...fixedChanged.map((r) => ({

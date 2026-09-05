@@ -3,7 +3,7 @@ import { queryOptions, useQueryClient, useSuspenseQuery } from "@tanstack/react-
 import { useMemo, useState, useEffect } from "react";
 import { AlertTriangle, CheckCircle2, LogOut, RotateCcw, Sparkles, X } from "lucide-react";
 
-import { getFleetData, type AdhocRow, type FixedRow } from "@/lib/fleet.functions";
+import { getFleetData, syncFleetNow, type AdhocRow, type FixedRow } from "@/lib/fleet.functions";
 import { BottomNav } from "@/components/BottomNav";
 import { AuthGate } from "@/components/AuthGate";
 import { clearSession, driMatches, formatDateTime, type FleetSession } from "@/lib/session";
@@ -34,10 +34,11 @@ function fleetQueryOptions() {
     queryKey: ["fleet-data"],
     queryFn: () => getFleetData(),
     staleTime: 5 * 60_000,
-    refetchInterval: 60_000,
+    refetchInterval: 2 * 60_000,
     refetchOnWindowFocus: true,
   });
 }
+
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -264,9 +265,15 @@ function DashboardPage({ session }: { session: FleetSession }) {
 
   async function refresh() {
     setRefreshing(true);
+    try {
+      await syncFleetNow();
+    } catch {
+      // Sync unavailable — still refresh from what the server already has.
+    }
     await queryClient.invalidateQueries({ queryKey: ["fleet-data"] });
     setRefreshing(false);
   }
+
 
   function resolveAdhoc(r: AdhocRow) {
     markResolved(session.dri, {
@@ -305,9 +312,10 @@ function DashboardPage({ session }: { session: FleetSession }) {
               <span className="truncate">Logged in as: {session.dri}</span>
             </div>
             <p className="mt-1 truncate text-[11px] leading-relaxed text-muted-foreground">
-              Last login {formatDateTime(session.previousLoginAt ?? session.loginAt)} · Data updated{" "}
+              Last login {formatDateTime(session.previousLoginAt ?? session.loginAt)} · Last synced{" "}
               {formatDateTime(data.fetchedAt)}
             </p>
+
           </div>
           <div className="flex shrink-0 items-center gap-2">
             <button

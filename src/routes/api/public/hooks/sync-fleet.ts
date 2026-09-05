@@ -11,17 +11,20 @@ export const Route = createFileRoute("/api/public/hooks/sync-fleet")({
   server: {
     handlers: {
       POST: async ({ request }) => {
-        const secret = process.env["FLEET_SYNC_SECRET"];
-        if (!secret) {
+        const accepted = [process.env["FLEET_SYNC_SECRET"], process.env["FLEET_CRON_TOKEN"]].filter(
+          (v): v is string => typeof v === "string" && v.length > 0,
+        );
+        if (accepted.length === 0) {
           return Response.json({ error: "Sync secret not configured" }, { status: 500 });
         }
         const provided =
           request.headers.get("x-fleet-sync-secret") ??
           request.headers.get("authorization")?.replace(/^Bearer\s+/i, "") ??
           "";
-        if (!timingSafeEqual(provided, secret)) {
+        if (!accepted.some((secret) => timingSafeEqual(provided, secret))) {
           return Response.json({ error: "Unauthorized" }, { status: 401 });
         }
+
 
         try {
           const { runFleetSync } = await import("@/lib/fleet-sync.server");
