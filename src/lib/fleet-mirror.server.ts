@@ -5,7 +5,8 @@ import { dayKey, parseDate } from "./dates";
 import { getFleetPayload, type AdhocRow, type FixedRow, type FleetPayload } from "./fleet-data.server";
 
 const STALE_MS = 15 * 60_000;
-const PAGE = 1000;
+const PAGE = 5000;
+
 
 async function fetchAll<T>(table: "fleet_fixed_current" | "fleet_adhoc_current"): Promise<T[]> {
   const out: T[] = [];
