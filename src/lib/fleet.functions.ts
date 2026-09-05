@@ -13,9 +13,15 @@ export const getSyncStatus = createServerFn({ method: "GET" }).handler(async () 
   return getLastSync();
 });
 
-/** Manual "Sync now" — runs the same job the schedule triggers. */
+/** Manual "Sync now" — same job the schedule triggers, throttled to once a minute. */
 export const syncFleetNow = createServerFn({ method: "POST" }).handler(async () => {
+  const { getLastSync } = await import("./fleet-mirror.server");
+  const last = await getLastSync();
+  if (last.syncedAt && Date.now() - new Date(last.syncedAt).getTime() < 60_000) {
+    return { ok: true as const, syncedAt: last.syncedAt, skipped: true as const };
+  }
   const { runFleetSync } = await import("./fleet-sync.server");
   const result = await runFleetSync();
-  return { ok: true as const, syncedAt: result.syncedAt, fixedRows: result.fixedRows, adhocRows: result.adhocRows };
+  return { ok: true as const, syncedAt: result.syncedAt, skipped: false as const };
 });
+
