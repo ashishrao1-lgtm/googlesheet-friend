@@ -76,8 +76,6 @@ export async function getMirrorPayload(): Promise<FleetPayload | null> {
     spPhone: s(r["sp_phone"]),
     center: s(r["center"]),
     facilityType: s(r["facility_type"]),
-    dr: s(r["dr"]),
-    sdr: s(r["sdr"]),
     vehicleType: s(r["vehicle_type"]),
     state: s(r["state"]),
     city: s(r["city"]),
@@ -92,8 +90,13 @@ export async function getMirrorPayload(): Promise<FleetPayload | null> {
     targetPrice: s(r["target_price"]),
     bidAmount: s(r["bid_amount"]),
     bidOrigin: s(r["bid_origin"]),
+    nep: s(r["nep"]),
+    unionArea: s(r["union_area"]),
     fleetDri: s(r["fleet_dri"]),
     ontimePlacement: s(r["ontime_placement"]),
+    acceptanceDiff: s(r["acceptance_diff"]),
+    bidReceivedTime: s(r["bid_received_time"]),
+    updatedBy: s(r["updated_by"]),
   }));
 
   let earliest: Date | null = null;
