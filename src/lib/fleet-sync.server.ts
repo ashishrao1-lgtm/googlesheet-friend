@@ -47,8 +47,6 @@ type AdhocMirror = {
   sp_phone: string;
   center: string;
   facility_type: string;
-  dr: string;
-  sdr: string;
   vehicle_type: string;
   state: string;
   city: string;
@@ -107,8 +105,6 @@ function toAdhocMirror(r: AdhocRow, syncedAt: string): AdhocMirror {
     sp_phone: r.spPhone,
     center: r.center,
     facility_type: r.facilityType,
-    dr: r.dr,
-    sdr: r.sdr,
     vehicle_type: r.vehicleType,
     state: r.state,
     city: r.city,
