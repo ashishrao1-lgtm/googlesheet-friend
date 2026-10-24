@@ -36,8 +36,6 @@ export type AdhocRow = {
   spPhone: string;
   center: string;
   facilityType: string;
-  dr: string;
-  sdr: string;
   vehicleType: string;
   state: string;
   city: string;
@@ -52,8 +50,13 @@ export type AdhocRow = {
   targetPrice: string;
   bidAmount: string;
   bidOrigin: string;
+  nep: string;
+  unionArea: string;
   fleetDri: string;
   ontimePlacement: string;
+  acceptanceDiff: string;
+  bidReceivedTime: string;
+  updatedBy: string;
 };
 
 export type FleetPayload = {
@@ -99,6 +102,102 @@ async function fetchRanges(ranges: string[]) {
 const FIXED_TAIL = 45000;
 const ADHOC_TAIL = 9000;
 
+// Column widths: Fixed = A:R (18), Adhoc = A:AD (30).
+const FIXED_COLS = 18;
+const ADHOC_COLS = 30;
+
+const colLetter = (n: number) => {
+  let s = "";
+  while (n > 0) {
+    const rem = (n - 1) % 26;
+    s = String.fromCharCode(65 + rem) + s;
+    n = Math.floor((n - 1) / 26);
+  }
+  return s;
+};
+
+// Header-name based mapping, so future sheet column reorders don't silently
+// corrupt the data (the adhoc tab was restructured before and broke the app).
+const FIXED_FIELD_HEADERS: Record<keyof FixedRow, string> = {
+  contractCode: "contract code",
+  contractNumber: "contract number",
+  vehicle: "attendance vehicle",
+  vendor: "vendor name",
+  center: "center name",
+  city: "city",
+  state: "state",
+  zone: "zone",
+  facilityType: "facility type",
+  contractHrs: "contract hrs",
+  contractDays: "contract days",
+  attendanceDate: "attendance date",
+  reportingTime: "reporting time",
+  reportedAt: "reported at",
+  status: "status",
+  attendanceStatus: "attendance_status",
+  startDate: "start_date",
+  fleetDri: "fleet_dr_is",
+};
+
+const ADHOC_FIELD_HEADERS: Record<keyof AdhocRow, string> = {
+  indentId: "indent_id",
+  ticketNo: "ticket_no",
+  lob: "lob",
+  duration: "ticket_duration",
+  vehicle: "vehicle_no",
+  driverPhone: "driver_phone",
+  spPhone: "sp_phone",
+  center: "center_name",
+  facilityType: "facility_type",
+  vehicleType: "vehicle_type",
+  state: "state",
+  city: "city",
+  zone: "zone",
+  creationTime: "creation_time",
+  reportingTime: "reporting_time",
+  attendanceInTime: "attendance_in_time",
+  vendor: "vendor_name",
+  ticketStatus: "ticket_status",
+  creationBucket: "tkt_creation_bucket",
+  reason: "ticket_reason",
+  targetPrice: "target_price",
+  bidAmount: "bid_amount",
+  bidOrigin: "bid_origin",
+  nep: "nep",
+  unionArea: "union_area",
+  fleetDri: "fleet_dr_is",
+  ontimePlacement: "ontime_placement",
+  acceptanceDiff: "acceptance_diff",
+  bidReceivedTime: "bid_received_time",
+  updatedBy: "updated_by",
+};
+
+const normHeader = (h: string) =>
+  (h || "").trim().toLowerCase().replace(/[^a-z0-9]/g, "");
+
+function headerIndexMap(headers: string[]): Map<string, number> {
+  const m = new Map<string, number>();
+  headers.forEach((h, i) => {
+    const key = normHeader(h);
+    if (key && !m.has(key)) m.set(key, i);
+  });
+  return m;
+}
+
+/** Maps one sheet row to a typed object using the header index map. */
+function mapRow<T extends Record<string, string>>(
+  row: string[],
+  idx: Map<string, number>,
+  fields: Record<string, string>,
+): T {
+  const out: Record<string, string> = {};
+  for (const [field, header] of Object.entries(fields)) {
+    const i = idx.get(normHeader(header));
+    out[field] = i != null && i < row.length ? (row[i] ?? "") : "";
+  }
+  return out as T;
+}
+
 // Module-level cache to survive across requests on the same worker instance.
 // Sheets API has a 60 req/min per-project limit shared across all users, so we
 // must not hit it on every page load.
@@ -115,65 +214,23 @@ async function loadFleetData(): Promise<FleetPayload> {
   const fixedStart = Math.max(2, fixedMeta.rowCount - FIXED_TAIL + 1);
   const adhocStart = Math.max(2, adhocMeta.rowCount - ADHOC_TAIL + 1);
 
-  const [fixed, adhoc] = await fetchRanges([
-    `Fixed Compliance!A${fixedStart}:R${fixedMeta.rowCount}`,
-    `Adhoc Compliance!A${adhocStart}:AG${adhocMeta.rowCount}`,
+  const [fixed, adhoc, fixedHeaders, adhocHeaders] = await fetchRanges([
+    `Fixed Compliance!A${fixedStart}:${colLetter(FIXED_COLS)}${fixedMeta.rowCount}`,
+    `Adhoc Compliance!A${adhocStart}:${colLetter(ADHOC_COLS)}${adhocMeta.rowCount}`,
+    `Fixed Compliance!A1:${colLetter(FIXED_COLS)}1`,
+    `Adhoc Compliance!A1:${colLetter(ADHOC_COLS)}1`,
   ]);
+
+  const fixedIdx = headerIndexMap(fixedHeaders[0] ?? []);
+  const adhocIdx = headerIndexMap(adhocHeaders[0] ?? []);
 
   const fixedRows: FixedRow[] = fixed
     .filter((r) => r[1] || r[2])
-    .map((r) => ({
-      contractCode: r[0] ?? "",
-      contractNumber: r[1] ?? "",
-      vehicle: r[2] ?? "",
-      vendor: r[3] ?? "",
-      center: r[4] ?? "",
-      city: r[5] ?? "",
-      state: r[6] ?? "",
-      zone: r[7] ?? "",
-      facilityType: r[8] ?? "",
-      contractHrs: r[9] ?? "",
-      contractDays: r[10] ?? "",
-      attendanceDate: r[11] ?? "",
-      reportingTime: r[12] ?? "",
-      reportedAt: r[13] ?? "",
-      status: r[14] ?? "",
-      attendanceStatus: r[15] ?? "",
-      startDate: r[16] ?? "",
-      fleetDri: r[17] ?? "",
-    }));
+    .map((r) => mapRow<FixedRow>(r, fixedIdx, FIXED_FIELD_HEADERS));
 
   const adhocRows: AdhocRow[] = adhoc
     .filter((r) => r[1] || r[0])
-    .map((r) => ({
-      indentId: r[0] ?? "",
-      ticketNo: r[1] ?? "",
-      lob: r[2] ?? "",
-      duration: r[3] ?? "",
-      vehicle: r[4] ?? "",
-      driverPhone: r[5] ?? "",
-      spPhone: r[6] ?? "",
-      center: r[7] ?? "",
-      facilityType: r[8] ?? "",
-      dr: r[9] ?? "",
-      sdr: r[10] ?? "",
-      vehicleType: r[11] ?? "",
-      state: r[12] ?? "",
-      city: r[13] ?? "",
-      zone: r[14] ?? "",
-      creationTime: r[15] ?? "",
-      reportingTime: r[16] ?? "",
-      attendanceInTime: r[17] ?? "",
-      vendor: r[18] ?? "",
-      ticketStatus: r[19] ?? "",
-      creationBucket: r[20] ?? "",
-      reason: r[21] ?? "",
-      targetPrice: r[22] ?? "",
-      bidAmount: r[23] ?? "",
-      bidOrigin: r[24] ?? "",
-      fleetDri: r[27] ?? "",
-      ontimePlacement: r[28] ?? "",
-    }));
+    .map((r) => mapRow<AdhocRow>(r, adhocIdx, ADHOC_FIELD_HEADERS));
 
   let earliest: Date | null = null;
   for (const r of fixedRows) {
