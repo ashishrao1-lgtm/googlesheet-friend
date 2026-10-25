@@ -74,7 +74,7 @@ function isDelayed(s: string | undefined): boolean {
 }
 
 function PerformancePage({ session }: { session: FleetSession }) {
-  const { data } = useSuspenseQuery(fleetQueryOptions());
+  const { data } = useSuspenseQuery(fleetQueryOptions(session.dri));
   const [filters, setFilters] = useState<FilterState>(EMPTY_FILTERS);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [scope, setScope] = useState<"fixed" | "adhoc">("fixed");
