@@ -150,6 +150,22 @@ async function insertSnapshots(
 
 export type SyncResult = { fixedRows: number; adhocRows: number; fixedChanged: number; adhocChanged: number; syncedAt: string };
 
+const STATE_PAGE = 5000;
+
+async function fetchAllRows<T>(
+  table: "fleet_fixed_current" | "fleet_adhoc_current",
+  cols: string,
+): Promise<T[]> {
+  const out: T[] = [];
+  for (let from = 0; ; from += STATE_PAGE) {
+    const { data, error } = await supabaseAdmin.from(table).select(cols).range(from, from + STATE_PAGE - 1);
+    if (error) throw new Error(`${table} read failed: ${error.message}`);
+    out.push(...((data ?? []) as unknown as T[]));
+    if (!data || data.length < STATE_PAGE) break;
+  }
+  return out;
+}
+
 /** Pulls the sheet and mirrors only changed rows; appends history for changes. */
 export async function runFleetSync(): Promise<SyncResult> {
   const startedAt = new Date().toISOString();
@@ -163,13 +179,19 @@ export async function runFleetSync(): Promise<SyncResult> {
     const payload = await getFleetPayload();
     const syncedAt = new Date().toISOString();
 
-    // Existing state, for change detection (keeps writes small).
-    const [{ data: exFixed, error: efErr }, { data: exAdhoc, error: eaErr }] = await Promise.all([
-      supabaseAdmin.from("fleet_fixed_current").select("row_key, status, attendance_status, reported_at"),
-      supabaseAdmin.from("fleet_adhoc_current").select("row_key, ticket_status, attendance_in_time, ontime_placement"),
+    // Existing state, for change detection (keeps writes small). Must page:
+    // a plain .select() caps at 1,000 rows, which made every later row look
+    // "changed" and rewrote the whole table each run.
+    const [exFixed, exAdhoc] = await Promise.all([
+      fetchAllRows<{ row_key: string; removed_at: string | null; status: string; attendance_status: string; reported_at: string }>(
+        "fleet_fixed_current",
+        "row_key, removed_at, status, attendance_status, reported_at",
+      ),
+      fetchAllRows<{ row_key: string; removed_at: string | null; ticket_status: string; attendance_in_time: string; ontime_placement: string }>(
+        "fleet_adhoc_current",
+        "row_key, removed_at, ticket_status, attendance_in_time, ontime_placement",
+      ),
     ]);
-    if (efErr) throw new Error(efErr.message);
-    if (eaErr) throw new Error(eaErr.message);
 
     const fixedState = new Map((exFixed ?? []).map((r) => [r.row_key, `${r.status}|${r.attendance_status}|${r.reported_at}`]));
     const adhocState = new Map(
