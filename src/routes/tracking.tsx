@@ -6,7 +6,7 @@ import { ChevronLeft, MessageCircle, Phone } from "lucide-react";
 import { getFleetData, type AdhocRow, type FixedRow } from "@/lib/fleet.functions";
 import { BottomNav } from "@/components/BottomNav";
 import { AuthGate } from "@/components/AuthGate";
-import { driMatches, type FleetSession } from "@/lib/session";
+import { getSession, type FleetSession } from "@/lib/session";
 import { FilterButton, FilterSheet } from "@/components/FilterSheet";
 import {
   EMPTY_FILTERS,
@@ -19,10 +19,10 @@ import {
 import { bySlaUrgency, slaColor, slaLabel, slaTone, timeToBreach } from "@/lib/sla";
 import { logAction } from "@/lib/actions.functions";
 
-function fleetQueryOptions() {
+function fleetQueryOptions(dri: string) {
   return queryOptions({
-    queryKey: ["fleet-data"],
-    queryFn: () => getFleetData(),
+    queryKey: ["fleet-data", dri],
+    queryFn: () => getFleetData({ data: { dri } }),
     staleTime: 5 * 60_000,
     refetchInterval: 60_000,
     refetchOnWindowFocus: true,
@@ -47,7 +47,13 @@ export const Route = createFileRoute("/tracking")({
       { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
-  loader: ({ context }) => context.queryClient.ensureQueryData(fleetQueryOptions()),
+  // Data is scoped to the signed-in DRI (client session), so skip SSR loading.
+  loader: ({ context }) => {
+    if (typeof window === "undefined") return;
+    const dri = getSession()?.dri;
+    if (!dri) return;
+    return context.queryClient.ensureQueryData(fleetQueryOptions(dri));
+  },
   component: TrackingRoute,
 });
 
@@ -76,19 +82,14 @@ function waLink(phone: string, message: string): string {
 }
 
 function TrackingPage({ session }: { session: FleetSession }) {
-  const { data } = useSuspenseQuery(fleetQueryOptions());
+  const { data } = useSuspenseQuery(fleetQueryOptions(session.dri));
   const [tab, setTab] = useState<"adhoc" | "fixed">("adhoc");
   const [filters, setFilters] = useState<FilterState>(EMPTY_FILTERS);
   const [filtersOpen, setFiltersOpen] = useState(false);
 
-  const mineFixed = useMemo(
-    () => data.fixed.filter((r) => driMatches(r.fleetDri, session.dri)),
-    [data.fixed, session.dri],
-  );
-  const mineAdhoc = useMemo(
-    () => data.adhoc.filter((r) => driMatches(r.fleetDri, session.dri)),
-    [data.adhoc, session.dri],
-  );
+  // Rows are already filtered to this DRI by the server function.
+  const mineFixed = data.fixed;
+  const mineAdhoc = data.adhoc;
 
   const adhocTrips = useMemo(
     () => bySlaUrgency(
