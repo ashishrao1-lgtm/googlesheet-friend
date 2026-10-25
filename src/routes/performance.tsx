@@ -98,14 +98,11 @@ function PerformancePage({ session }: { session: FleetSession }) {
   const vendorFixed: VendorRow[] = useMemo(() => vendorSplitFixed(myFixed), [myFixed]);
   const vendorAdhoc: VendorRow[] = useMemo(() => vendorSplitAdhoc(myAdhoc), [myAdhoc]);
 
-  // ---- Personal scorecard (you vs team average) ----
+  // ---- Personal scorecard (you vs team average; team values come precomputed
+  // from the server, since the payload no longer includes other DRIs' rows) ----
   const scorecard = useMemo(() => {
     const myOnTime = mineFixed.filter((r) => isOnTime(r.status)).length;
     const myFixedOnTimePct = mineFixed.length ? Math.round((myOnTime / mineFixed.length) * 100) : 0;
-
-    const teamTotal = data.fixed.length;
-    const teamOnTime = data.fixed.filter((r) => isOnTime(r.status)).length;
-    const teamFixedOnTimePct = teamTotal ? Math.round((teamOnTime / teamTotal) * 100) : 0;
 
     const myDelayedSet = new Set(
       mineAdhoc.filter((r) => isDelayed(r.ontimePlacement)).map((r) => r.ticketNo),
@@ -115,27 +112,19 @@ function PerformancePage({ session }: { session: FleetSession }) {
       ? Math.round((myDelayedSet.size / myTicketSet.size) * 100)
       : 0;
 
-    const teamDelayedSet = new Set(
-      data.adhoc.filter((r) => isDelayed(r.ontimePlacement)).map((r) => r.ticketNo),
-    );
-    const teamTicketSet = new Set(data.adhoc.filter((r) => r.ontimePlacement).map((r) => r.ticketNo));
-    const teamBreachPct = teamTicketSet.size
-      ? Math.round((teamDelayedSet.size / teamTicketSet.size) * 100)
-      : 0;
-
     const resolvedCount = getResolutions(session.dri).length;
     const totalAlerts = mineFixed.length + mineAdhoc.length;
     const resolutionRate = totalAlerts ? Math.round((resolvedCount / totalAlerts) * 100) : 0;
 
     return {
       myFixedOnTimePct,
-      teamFixedOnTimePct,
+      teamFixedOnTimePct: data.team.fixedOnTimePct,
       myBreachPct,
-      teamBreachPct,
+      teamBreachPct: data.team.adhocBreachPct,
       resolutionRate,
       resolvedCount,
     };
-  }, [mineFixed, mineAdhoc, data.fixed, data.adhoc, session.dri]);
+  }, [mineFixed, mineAdhoc, data.team, session.dri]);
 
   const options =
     scope === "fixed" ? uniqueFixedOptions(mineFixed) : uniqueAdhocOptions(mineAdhoc);
