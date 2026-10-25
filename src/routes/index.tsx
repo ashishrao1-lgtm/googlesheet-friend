@@ -6,7 +6,7 @@ import { AlertTriangle, CheckCircle2, LogOut, RotateCcw, Sparkles, X } from "luc
 import { getFleetData, syncFleetNow, type AdhocRow, type FixedRow } from "@/lib/fleet.functions";
 import { BottomNav } from "@/components/BottomNav";
 import { AuthGate } from "@/components/AuthGate";
-import { clearSession, driMatches, formatDateTime, type FleetSession } from "@/lib/session";
+import { clearSession, formatDateTime, getSession, type FleetSession } from "@/lib/session";
 import {
   adhocAlertId,
   fixedAlertId,
@@ -29,10 +29,10 @@ import { isAdhocOpen, isFixedMissing } from "@/lib/alerts";
 import { bySlaUrgency, slaColor, slaLabel, slaTone, timeToBreach } from "@/lib/sla";
 import { logAction } from "@/lib/actions.functions";
 
-function fleetQueryOptions() {
+function fleetQueryOptions(dri: string) {
   return queryOptions({
-    queryKey: ["fleet-data"],
-    queryFn: () => getFleetData(),
+    queryKey: ["fleet-data", dri],
+    queryFn: () => getFleetData({ data: { dri } }),
     staleTime: 5 * 60_000,
     refetchInterval: 2 * 60_000,
     refetchOnWindowFocus: true,
@@ -58,7 +58,13 @@ export const Route = createFileRoute("/")({
       { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
-  loader: ({ context }) => context.queryClient.ensureQueryData(fleetQueryOptions()),
+  // Data is scoped to the signed-in DRI (client session), so skip SSR loading.
+  loader: ({ context }) => {
+    if (typeof window === "undefined") return;
+    const dri = getSession()?.dri;
+    if (!dri) return;
+    return context.queryClient.ensureQueryData(fleetQueryOptions(dri));
+  },
   component: DashboardRoute,
 });
 
@@ -95,7 +101,7 @@ function latestDate(dates: (string | undefined)[]): Date | null {
 function DashboardPage({ session }: { session: FleetSession }) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { data, dataUpdatedAt } = useSuspenseQuery(fleetQueryOptions());
+  const { data, dataUpdatedAt } = useSuspenseQuery(fleetQueryOptions(session.dri));
   const [tab, setTab] = useState<"adhoc" | "fixed" | "resolved">("adhoc");
   const [filters, setFilters] = useState<FilterState>(EMPTY_FILTERS);
   const [filtersOpen, setFiltersOpen] = useState(false);
@@ -103,13 +109,8 @@ function DashboardPage({ session }: { session: FleetSession }) {
   const [refreshing, setRefreshing] = useState(false);
   const [newCount, setNewCount] = useState(0);
 
-  const mine = useMemo(
-    () => ({
-      fixed: data.fixed.filter((r) => driMatches(r.fleetDri, session.dri)),
-      adhoc: data.adhoc.filter((r) => driMatches(r.fleetDri, session.dri)),
-    }),
-    [data, session.dri],
-  );
+  // Rows are already filtered to this DRI by the server function.
+  const mine = useMemo(() => ({ fixed: data.fixed, adhoc: data.adhoc }), [data]);
 
   const today = useMemo(() => latestDate(mine.fixed.map((r) => r.reportingTime)), [mine.fixed]);
   const todayAdhoc = useMemo(
