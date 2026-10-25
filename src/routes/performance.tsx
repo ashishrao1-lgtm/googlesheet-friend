@@ -6,7 +6,7 @@ import { ChevronDown, ChevronLeft, ChevronUp } from "lucide-react";
 import { getFleetData, type AdhocRow, type FixedRow } from "@/lib/fleet.functions";
 import { BottomNav } from "@/components/BottomNav";
 import { AuthGate } from "@/components/AuthGate";
-import { driMatches, type FleetSession } from "@/lib/session";
+import { getSession, type FleetSession } from "@/lib/session";
 import { getResolutions } from "@/lib/resolutions";
 import { LineChart, type Point } from "@/components/LineChart";
 import { VendorSplitTable, type VendorRow } from "@/components/VendorSplitTable";
@@ -20,10 +20,10 @@ import {
   type FilterState,
 } from "@/lib/filters";
 
-function fleetQueryOptions() {
+function fleetQueryOptions(dri: string) {
   return queryOptions({
-    queryKey: ["fleet-data"],
-    queryFn: () => getFleetData(),
+    queryKey: ["fleet-data", dri],
+    queryFn: () => getFleetData({ data: { dri } }),
     staleTime: 5 * 60_000,
     refetchInterval: 60_000,
     refetchOnWindowFocus: true,
@@ -49,7 +49,13 @@ export const Route = createFileRoute("/performance")({
       { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
-  loader: ({ context }) => context.queryClient.ensureQueryData(fleetQueryOptions()),
+  // Data is scoped to the signed-in DRI (client session), so skip SSR loading.
+  loader: ({ context }) => {
+    if (typeof window === "undefined") return;
+    const dri = getSession()?.dri;
+    if (!dri) return;
+    return context.queryClient.ensureQueryData(fleetQueryOptions(dri));
+  },
   component: PerformanceRoute,
 });
 
@@ -68,21 +74,16 @@ function isDelayed(s: string | undefined): boolean {
 }
 
 function PerformancePage({ session }: { session: FleetSession }) {
-  const { data } = useSuspenseQuery(fleetQueryOptions());
+  const { data } = useSuspenseQuery(fleetQueryOptions(session.dri));
   const [filters, setFilters] = useState<FilterState>(EMPTY_FILTERS);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [scope, setScope] = useState<"fixed" | "adhoc">("fixed");
   const [showVendorFixed, setShowVendorFixed] = useState(false);
   const [showVendorAdhoc, setShowVendorAdhoc] = useState(false);
 
-  const mineFixed = useMemo(
-    () => data.fixed.filter((r) => driMatches(r.fleetDri, session.dri)),
-    [data.fixed, session.dri],
-  );
-  const mineAdhoc = useMemo(
-    () => data.adhoc.filter((r) => driMatches(r.fleetDri, session.dri)),
-    [data.adhoc, session.dri],
-  );
+  // Rows are already filtered to this DRI by the server function.
+  const mineFixed = data.fixed;
+  const mineAdhoc = data.adhoc;
 
   const myFixed = useMemo(() => applyFixedFilters(mineFixed, filters), [mineFixed, filters]);
   const myAdhoc = useMemo(() => applyAdhocFilters(mineAdhoc, filters), [mineAdhoc, filters]);
@@ -97,14 +98,11 @@ function PerformancePage({ session }: { session: FleetSession }) {
   const vendorFixed: VendorRow[] = useMemo(() => vendorSplitFixed(myFixed), [myFixed]);
   const vendorAdhoc: VendorRow[] = useMemo(() => vendorSplitAdhoc(myAdhoc), [myAdhoc]);
 
-  // ---- Personal scorecard (you vs team average) ----
+  // ---- Personal scorecard (you vs team average; team values come precomputed
+  // from the server, since the payload no longer includes other DRIs' rows) ----
   const scorecard = useMemo(() => {
     const myOnTime = mineFixed.filter((r) => isOnTime(r.status)).length;
     const myFixedOnTimePct = mineFixed.length ? Math.round((myOnTime / mineFixed.length) * 100) : 0;
-
-    const teamTotal = data.fixed.length;
-    const teamOnTime = data.fixed.filter((r) => isOnTime(r.status)).length;
-    const teamFixedOnTimePct = teamTotal ? Math.round((teamOnTime / teamTotal) * 100) : 0;
 
     const myDelayedSet = new Set(
       mineAdhoc.filter((r) => isDelayed(r.ontimePlacement)).map((r) => r.ticketNo),
@@ -114,27 +112,19 @@ function PerformancePage({ session }: { session: FleetSession }) {
       ? Math.round((myDelayedSet.size / myTicketSet.size) * 100)
       : 0;
 
-    const teamDelayedSet = new Set(
-      data.adhoc.filter((r) => isDelayed(r.ontimePlacement)).map((r) => r.ticketNo),
-    );
-    const teamTicketSet = new Set(data.adhoc.filter((r) => r.ontimePlacement).map((r) => r.ticketNo));
-    const teamBreachPct = teamTicketSet.size
-      ? Math.round((teamDelayedSet.size / teamTicketSet.size) * 100)
-      : 0;
-
     const resolvedCount = getResolutions(session.dri).length;
     const totalAlerts = mineFixed.length + mineAdhoc.length;
     const resolutionRate = totalAlerts ? Math.round((resolvedCount / totalAlerts) * 100) : 0;
 
     return {
       myFixedOnTimePct,
-      teamFixedOnTimePct,
+      teamFixedOnTimePct: data.team.fixedOnTimePct,
       myBreachPct,
-      teamBreachPct,
+      teamBreachPct: data.team.adhocBreachPct,
       resolutionRate,
       resolvedCount,
     };
-  }, [mineFixed, mineAdhoc, data.fixed, data.adhoc, session.dri]);
+  }, [mineFixed, mineAdhoc, data.team, session.dri]);
 
   const options =
     scope === "fixed" ? uniqueFixedOptions(mineFixed) : uniqueAdhocOptions(mineAdhoc);
