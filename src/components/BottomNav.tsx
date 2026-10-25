@@ -1,15 +1,15 @@
 import { Link, useLocation } from "@tanstack/react-router";
 import { queryOptions, useQuery } from "@tanstack/react-query";
-import { Home, MapPin, BarChart3, User, Sparkles } from "lucide-react";
+import { Home, MapPin, BarChart3, User } from "lucide-react";
 
 import { getFleetData } from "@/lib/fleet.functions";
 import { getSession } from "@/lib/session";
 import { computeOpenAlerts } from "@/lib/alerts";
 
-function fleetQueryOptions() {
+function fleetQueryOptions(dri: string) {
   return queryOptions({
-    queryKey: ["fleet-data"],
-    queryFn: () => getFleetData(),
+    queryKey: ["fleet-data", dri],
+    queryFn: () => getFleetData({ data: { dri } }),
     staleTime: 5 * 60_000,
   });
 }
@@ -21,9 +21,12 @@ export function BottomNav() {
   const homeActive = pathname === "/";
 
   // Non-suspense: the cache is primed by each page's loader; this just reads it.
-  const { data } = useQuery(fleetQueryOptions());
-  let badge = 0;
   const session = getSession();
+  const { data } = useQuery({
+    ...fleetQueryOptions(session?.dri ?? ""),
+    enabled: !!session,
+  });
+  let badge = 0;
   if (data && session) {
     const open = computeOpenAlerts(data.fixed, data.adhoc, session.dri);
     badge = Math.min(99, open.adhoc.length + open.fixed.length);

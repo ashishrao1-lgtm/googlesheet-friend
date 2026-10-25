@@ -6,14 +6,14 @@ import { getFleetData } from "@/lib/fleet.functions";
 import { BottomNav } from "@/components/BottomNav";
 import { StatusPill, toneForStatus } from "@/components/StatusPill";
 import { AuthGate } from "@/components/AuthGate";
-import { type FleetSession } from "@/lib/session";
+import { getSession, type FleetSession } from "@/lib/session";
 import { listActions } from "@/lib/actions.functions";
 import { useServerFn } from "@tanstack/react-start";
 
-function fleetQueryOptions(fetchFn: typeof getFleetData) {
+function fleetQueryOptions(dri: string) {
   return queryOptions({
-    queryKey: ["fleet-data"],
-    queryFn: () => fetchFn(),
+    queryKey: ["fleet-data", dri],
+    queryFn: () => getFleetData({ data: { dri } }),
     staleTime: 5 * 60_000,
   });
 }
@@ -35,7 +35,13 @@ export const Route = createFileRoute("/vehicle/$id")({
       { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
-  loader: ({ context }) => context.queryClient.ensureQueryData(fleetQueryOptions(getFleetData)),
+  // Data is scoped to the signed-in DRI (client session), so skip SSR loading.
+  loader: ({ context }) => {
+    if (typeof window === "undefined") return;
+    const dri = getSession()?.dri;
+    if (!dri) return;
+    return context.queryClient.ensureQueryData(fleetQueryOptions(dri));
+  },
   component: VehicleDetailRoute,
 });
 
@@ -46,7 +52,7 @@ function VehicleDetailRoute() {
 function VehicleDetail({ session }: { session: FleetSession }) {
   const { id } = Route.useParams();
 
-  const { data } = useSuspenseQuery(fleetQueryOptions(getFleetData));
+  const { data } = useSuspenseQuery(fleetQueryOptions(session.dri));
 
   const fixedHistory = data.fixed.filter((r) => r.vehicle === id);
   const adhocHistory = data.adhoc.filter((r) => r.vehicle === id || r.ticketNo === id);
