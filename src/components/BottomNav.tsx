@@ -34,7 +34,7 @@ export function BottomNav() {
 
   return (
     <nav className="fixed bottom-0 inset-x-0 z-50 border-t border-border bg-card/95 backdrop-blur-md supports-[backdrop-filter]:bg-card/80">
-      <ul className="relative mx-auto grid max-w-md grid-cols-5 items-end px-2 pt-2 pb-2.5">
+      <ul className="relative mx-auto grid max-w-md grid-cols-4 items-end px-2 pt-2 pb-2.5">
 
         <NavItem to="/tracking" label="Tracking" icon={MapPin} active={pathname === "/tracking"} />
         <NavItem to="/performance" label="Performance" icon={BarChart3} active={pathname === "/performance"} />
@@ -71,7 +71,6 @@ export function BottomNav() {
           </Link>
         </li>
 
-        <NavItem to="/ask" label="Ask AI" icon={Sparkles} active={pathname === "/ask"} />
         <NavItem to="/profile" label="Profile" icon={User} active={pathname === "/profile"} />
       </ul>
       <div className="h-[env(safe-area-inset-bottom)]" />
@@ -85,7 +84,7 @@ function NavItem({
   icon: Icon,
   active,
 }: {
-  to: "/tracking" | "/performance" | "/profile" | "/ask";
+  to: "/tracking" | "/performance" | "/profile";
   label: string;
   icon: typeof Home;
   active: boolean;
